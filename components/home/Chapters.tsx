@@ -2,7 +2,7 @@
 /* eslint-disable react/display-name -- панели передаются как функции отрисовки, а не компоненты */
 
 import { motion, useInView, useMotionValueEvent, useReducedMotion, useTransform } from "framer-motion";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { PanelChapter, PanelImage, type PanelArgs } from "@/components/motion/PanelChapter";
@@ -72,7 +72,7 @@ const EASE_IN_OUT: [number, number, number, number] = [0.45, 0, 0.55, 1];
  * и само фото по очереди выезжают снизу, а картинка внутри каждого слоя едет навстречу.
  * Анимация запускается, когда панель становится активной и видна на экране; при возврате — повторяется.
  */
-function MaterialPhoto({ material, panel }: { material: MaterialPanel; panel: PanelArgs }) {
+function MaterialPhoto({ material, panel, className }: { material: MaterialPanel; panel: PanelArgs; className?: string }) {
   const reduce = useReducedMotion();
   const box = useRef<HTMLDivElement>(null);
   const inView = useInView(box, { amount: 0.4 });
@@ -80,14 +80,11 @@ function MaterialPhoto({ material, panel }: { material: MaterialPanel; panel: Pa
   useMotionValueEvent(panel.progress, "change", (v) => {
     setActive(Math.abs(v * (panel.total - 1) - panel.index) < 0.45);
   });
-  const step = 1 / Math.max(1, panel.total - 1);
-  const at = panel.index * step;
-  const y = useTransform(panel.progress, [at - step, at + step], [14, -14]);
   const shown = reduce || (active && inView);
 
   const layers = [...REVEAL_LAYERS.map((c) => ({ key: c, color: c })), { key: "photo", color: "bg-white" }];
   return (
-    <motion.div ref={box} style={reduce ? undefined : { y }} className="relative h-[24vh] w-full overflow-hidden rounded-[24px] md:h-[40vh]">
+    <div ref={box} className={`overflow-hidden ${className ?? ""}`}>
       {layers.map((l, i) => (
         <motion.div
           key={l.key}
@@ -116,50 +113,106 @@ function MaterialPhoto({ material, panel }: { material: MaterialPanel; panel: Pa
           </motion.div>
         </motion.div>
       ))}
-    </motion.div>
+    </div>
   );
 }
 
-/** Материалы: огромное название на всю ширину, фото, минимум текста */
+/**
+ * Название материала: на десктопе кегль подбирается так, чтобы слово тянулось от левого поля
+ * до 80% ширины экрана и последними буквами заходило на фото (фото начинается с 64%).
+ */
+function FitTitle({ text }: { text: string }) {
+  const probe = useRef<HTMLSpanElement>(null);
+  const [size, setSize] = useState<number | null>(null);
+  useEffect(() => {
+    const fit = () => {
+      if (!probe.current) return;
+      if (window.innerWidth < 768) return setSize(null);
+      const w = probe.current.getBoundingClientRect().width;
+      // не крупнее 15vw: короткие слова (ПВХ) не раздуваются по высоте
+      if (w) setSize(Math.min(((window.innerWidth * 0.8 - window.innerWidth * 0.05) / w) * 100, window.innerWidth * 0.15));
+    };
+    fit();
+    document.fonts?.ready.then(fit);
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
+  const cls = "font-manrope leading-[0.82] font-normal tracking-[-0.04em] uppercase whitespace-nowrap";
+  const style = size ? { fontSize: `${size}px` } : undefined;
+  return (
+    <div className="relative mt-2 md:-ml-[5vw] md:w-screen md:pr-[20vw] md:pl-[5vw] md:text-right">
+      <span ref={probe} aria-hidden className={`${cls} pointer-events-none invisible absolute top-0 left-0 text-[100px]`}>
+        {text}
+      </span>
+      <h2 className={`${cls} text-[15.5vw] text-ink md:text-[12vw]`} style={style}>
+        {text}
+      </h2>
+      {/* цветная копия (бирюза логотипа) видна только поверх фото: обрезка по 64% ширины экрана */}
+      <span
+        aria-hidden
+        className={`${cls} pointer-events-none absolute inset-0 hidden text-[15.5vw] text-[#00b8cc] md:block md:pr-[20vw] md:pl-[5vw] md:text-right md:text-[12vw]`}
+        style={{ ...style, clipPath: "inset(0 0 0 64%)" }}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
+/** Характеристика в виде «стата» из игры: подпись, 5 крупных сегментов и оценка цифрой */
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-line py-3 md:py-3.5">
+      <dt className="font-jost text-lg md:text-xl">{label}</dt>
+      <dd className="flex items-center gap-3">
+        <span className="flex gap-1" aria-hidden>
+          {Array.from({ length: 5 }, (_, j) => (
+            <span key={j} className={`h-3.5 w-6 -skew-x-12 rounded-[3px] md:h-4 md:w-8 ${j < value ? "bg-tarp" : "bg-line"}`} />
+          ))}
+        </span>
+        <span className="w-10 text-right font-display text-2xl leading-none font-extrabold tabular-nums md:text-3xl">
+          {value}
+          <span className="text-base text-ink-soft">/5</span>
+        </span>
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Материалы: фото занимает правую треть панели во всю высоту, огромное название
+ * заходит на фото последними буквами — на фото они светлые (дубликат текста с обрезкой по краю фото).
+ */
 export function MaterialsChapter({ items }: { items: MaterialPanel[] }) {
   return (
     <PanelChapter
       className="bg-paper"
       speed={0.55}
       panels={items.map((m, i) => (p: PanelArgs) => (
-        <div className="relative flex h-full flex-col justify-between px-6 pt-24 pb-8 md:px-[5vw] md:pt-28 md:pb-12">
-          <div className="flex items-start justify-between gap-6">
-            <span className="font-jost text-lg text-ink-soft md:text-xl">
-              Материал {i + 1} из {items.length}
-            </span>
-            <span className="font-jost text-lg text-ink-soft md:text-xl">{m.density}</span>
-          </div>
+        <div className="relative h-full">
+          {/* фото: на телефоне — полоса сверху, на десктопе — правая треть во всю высоту */}
+          <MaterialPhoto material={m} panel={p} className="absolute inset-x-0 top-16 h-[26vh] md:inset-y-0 md:top-0 md:right-0 md:left-auto md:h-full md:w-[36%]" />
 
-          <div className="grid items-end gap-6 md:grid-cols-[1.1fr_1fr]">
-            <h2 className="font-manrope text-[15.5vw] leading-[0.82] font-normal tracking-[-0.04em] uppercase md:col-span-2 md:text-[14vw]">{m.title}</h2>
-            <div>
-              <p className="font-jost max-w-[40ch] text-xl leading-snug md:text-[clamp(1.5rem,2vw,2.5rem)]">{m.text}</p>
-              <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3">
-                {m.traits.map(([k, v]) => (
-                  <span key={k} className="font-jost flex items-center gap-2 text-base text-ink-soft md:text-xl">
-                    {k}
-                    <span className="flex gap-0.5" aria-label={`${v} из 5`}>
-                      {Array.from({ length: 5 }, (_, j) => (
-                        <span key={j} className={`h-2 w-3 rounded-full ${j < v ? "bg-tarp" : "bg-line"}`} />
-                      ))}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col items-start gap-4 md:items-end">
-              <MaterialPhoto material={m} panel={p} />
-              <div className="flex flex-wrap items-center gap-4">
-                <span className="font-display text-4xl font-extrabold">от {m.perM2} за м²</span>
-                <Link href={`/catalog?mat=${m.id}`} className="btn btn-ink min-h-16 px-7 text-lg">
-                  Изделия <ArrowUpRight className="size-4" aria-hidden />
-                </Link>
-              </div>
+          <div className="relative flex h-full flex-col px-6 pt-[calc(26vh+5rem)] pb-8 md:w-[64%] md:px-[5vw] md:pt-28 md:pb-10">
+            <span className="font-jost text-lg text-ink-soft md:text-xl">
+              Материал {i + 1} из {items.length} · {m.density}
+            </span>
+
+            <FitTitle text={m.title} />
+
+            <p className="font-jost mt-5 max-w-[40ch] text-xl leading-snug md:text-[clamp(1.35rem,1.8vw,2.1rem)]">{m.text}</p>
+
+            <dl className="mt-6 grid max-w-3xl gap-x-10 md:grid-cols-2">
+              {m.traits.map(([k, v]) => (
+                <Stat key={k} label={k} value={v} />
+              ))}
+            </dl>
+
+            <div className="mt-auto flex flex-wrap items-center gap-4 pt-6">
+              <span className="font-display text-4xl font-extrabold">от {m.perM2} за м²</span>
+              <Link href={`/catalog?mat=${m.id}`} className="btn btn-ink min-h-14 px-7 text-lg">
+                Изделия <ArrowUpRight className="size-4" aria-hidden />
+              </Link>
             </div>
           </div>
         </div>
