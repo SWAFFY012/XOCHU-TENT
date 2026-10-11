@@ -1,0 +1,64 @@
+.rapid-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: var(--color-ink);
+  /* Also release the page if JavaScript never hydrates. */
+  animation: rapid-intro-release 0s 8s forwards;
+}
+
+.rapid-intro__backdrop,
+.rapid-intro__layers,
+.rapid-intro__layer,
+.rapid-intro__image {
+  position: absolute;
+  inset: 0;
+}
+
+.rapid-intro__backdrop {
+  background: var(--color-ink);
+}
+
+.rapid-intro__layer:last-child .rapid-intro__image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(22,27,21,.55) 0%, rgba(22,27,21,.2) 35%, rgba(22,27,21,.85) 100%);
+}
+
+.rapid-intro__layer {
+  overflow: hidden;
+  transform: translate3d(0, 101%, 0);
+  will-change: transform;
+}
+
+.rapid-intro__image {
+  transform: translate3d(0, -101%, 0);
+  will-change: transform;
+}
+
+.rapid-intro__image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.rapid-intro--revealing {
+  background: transparent;
+  pointer-events: none;
+}
+
+.rapid-intro--revealing .rapid-intro__backdrop {
+  visibility: hidden;
+}
+
+@keyframes rapid-intro-release {
+  to { visibility: hidden; pointer-events: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rapid-intro { display: none; }
+}

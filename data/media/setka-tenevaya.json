@@ -1,0 +1,76 @@
+{
+ "slug": "setka-tenevaya",
+ "axis": "both",
+ "covers": {
+  "Брезентовая|Хаки": "/products/setka-tenevaya/cover-brezentovaya-haki.webp",
+  "ПВХ|Коричневый": "/products/setka-tenevaya/cover-pvh-korichnevyy.webp",
+  "ПВХ|Хаки": "/products/setka-tenevaya/cover-pvh-haki.webp"
+ },
+ "gallery": {
+  "Брезентовая|Хаки": [
+   "/products/setka-tenevaya/gallery/brezentovaya-haki/1.webp",
+   "/products/setka-tenevaya/gallery/brezentovaya-haki/2.webp",
+   "/products/setka-tenevaya/gallery/brezentovaya-haki/3.webp",
+   "/products/setka-tenevaya/gallery/brezentovaya-haki/4.webp",
+   "/products/setka-tenevaya/gallery/brezentovaya-haki/5.webp",
+   "/products/setka-tenevaya/gallery/brezentovaya-haki/6.webp",
+   "/products/setka-tenevaya/gallery/brezentovaya-haki/7.webp"
+  ],
+  "ПВХ|Хаки": [
+   "/products/setka-tenevaya/gallery/pvh-haki/1.webp",
+   "/products/setka-tenevaya/gallery/pvh-haki/2.webp",
+   "/products/setka-tenevaya/gallery/pvh-haki/3.webp",
+   "/products/setka-tenevaya/gallery/pvh-haki/4.webp",
+   "/products/setka-tenevaya/gallery/pvh-haki/5.webp",
+   "/products/setka-tenevaya/gallery/pvh-haki/6.webp",
+   "/products/setka-tenevaya/gallery/pvh-haki/7.webp"
+  ],
+  "ПВХ|Коричневый": [
+   "/products/setka-tenevaya/gallery/pvh-korichnevyy/1.webp",
+   "/products/setka-tenevaya/gallery/pvh-korichnevyy/2.webp",
+   "/products/setka-tenevaya/gallery/pvh-korichnevyy/3.webp",
+   "/products/setka-tenevaya/gallery/pvh-korichnevyy/4.webp",
+   "/products/setka-tenevaya/gallery/pvh-korichnevyy/5.webp",
+   "/products/setka-tenevaya/gallery/pvh-korichnevyy/6.webp",
+   "/products/setka-tenevaya/gallery/pvh-korichnevyy/7.webp"
+  ]
+ },
+ "sizes": {
+  "Брезентовая|Хаки": {
+   "3х4": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x4.webp",
+   "3х4,5": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x45.webp",
+   "3х5": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x5.webp",
+   "3х5,5": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x55.webp",
+   "3х6": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x6.webp",
+   "3х6,5": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x65.webp",
+   "3х7": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x7.webp",
+   "3х7,5": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x75.webp",
+   "3х8": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x8.webp",
+   "3х9": "/products/setka-tenevaya/sizes/brezentovaya-haki/3x9.webp"
+  },
+  "ПВХ|Коричневый": {
+   "3х4": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x4.webp",
+   "3х4,5": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x45.webp",
+   "3х5": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x5.webp",
+   "3х5,5": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x55.webp",
+   "3х6": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x6.webp",
+   "3х6,5": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x65.webp",
+   "3х7": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x7.webp",
+   "3х7,5": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x75.webp",
+   "3х8": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x8.webp",
+   "3х9": "/products/setka-tenevaya/sizes/pvh-korichnevyy/3x9.webp"
+  },
+  "ПВХ|Хаки": {
+   "3х4": "/products/setka-tenevaya/sizes/pvh-haki/3x4.webp",
+   "3х4,5": "/products/setka-tenevaya/sizes/pvh-haki/3x45.webp",
+   "3х5": "/products/setka-tenevaya/sizes/pvh-haki/3x5.webp",
+   "3х5,5": "/products/setka-tenevaya/sizes/pvh-haki/3x55.webp",
+   "3х6": "/products/setka-tenevaya/sizes/pvh-haki/3x6.webp",
+   "3х6,5": "/products/setka-tenevaya/sizes/pvh-haki/3x65.webp",
+   "3х7": "/products/setka-tenevaya/sizes/pvh-haki/3x7.webp",
+   "3х7,5": "/products/setka-tenevaya/sizes/pvh-haki/3x75.webp",
+   "3х8": "/products/setka-tenevaya/sizes/pvh-haki/3x8.webp",
+   "3х9": "/products/setka-tenevaya/sizes/pvh-haki/3x9.webp"
+  }
+ }
+}

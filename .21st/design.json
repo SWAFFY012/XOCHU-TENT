@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "project": {
+    "name": "hochutent-web",
+    "productType": null,
+    "stack": [
+      "nextjs",
+      "react",
+      "tailwind-v4"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "app/globals.css"
+    ],
+    "components": [],
+    "assets": [],
+    "instructions": [
+      "DESIGN.md",
+      "AGENTS.md"
+    ]
+  },
+  "design": {
+    "colorMode": "light",
+    "colors": {
+      "--color-chalk": {
+        "value": "#e8ece5",
+        "source": "app/globals.css"
+      },
+      "--color-paper": {
+        "value": "#f8f9f6",
+        "source": "app/globals.css"
+      },
+      "--color-tarp": {
+        "value": "#28331f",
+        "source": "app/globals.css"
+      },
+      "--color-tarp-2": {
+        "value": "#33402a",
+        "source": "app/globals.css"
+      },
+      "--color-ink": {
+        "value": "#161b15",
+        "source": "app/globals.css"
+      },
+      "--color-ink-soft": {
+        "value": "#4a5246",
+        "source": "app/globals.css"
+      },
+      "--color-strap": {
+        "value": "#f4b400",
+        "source": "app/globals.css"
+      },
+      "--color-strap-deep": {
+        "value": "#d99f00",
+        "source": "app/globals.css"
+      },
+      "--color-oxford": {
+        "value": "#1f4fa6",
+        "source": "app/globals.css"
+      },
+      "--color-seam": {
+        "value": "#9da696",
+        "source": "app/globals.css"
+      },
+      "--color-line": {
+        "value": "#d3d9cf",
+        "source": "app/globals.css"
+      },
+      "--color-ok": {
+        "value": "#1b7f3b",
+        "source": "app/globals.css"
+      },
+      "--color-danger": {
+        "value": "#b42318",
+        "source": "app/globals.css"
+      }
+    },
+    "typography": {
+      "--font-display": {
+        "value": "var(--font-alumni), \"Arial Narrow\", sans-serif",
+        "source": "app/globals.css"
+      },
+      "--font-sans": {
+        "value": "var(--font-golos), system-ui, sans-serif",
+        "source": "app/globals.css"
+      },
+      "--font-tektur": {
+        "value": "var(--font-tektur-src), var(--font-alumni), sans-serif",
+        "source": "app/globals.css"
+      },
+      "--font-manrope": {
+        "value": "var(--font-manrope-src), system-ui, sans-serif",
+        "source": "app/globals.css"
+      },
+      "--font-jost": {
+        "value": "var(--font-jost-src), \"Futura\", system-ui, sans-serif",
+        "source": "app/globals.css"
+      }
+    },
+    "spacing": {},
+    "radius": {},
+    "shadows": {},
+    "motion": {
+      "--ease-out-quart": {
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "source": "app/globals.css"
+      },
+      "--ease-curtain": {
+        "value": "cubic-bezier(0.76, 0, 0.24, 1)",
+        "source": "app/globals.css"
+      }
+    },
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [],
+    "preferredPrimitives": [],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [
+    {
+      "scope": "home",
+      "choice": "Automatic Codrops Rapid Image Layers intro with ten workshop photos and a real opening video frame; no opening hold, final hold and matching video handoff",
+      "source": "User request",
+      "constraints": [
+        "No photo titles or reference-demo menu",
+        "Responsive WebP exports including upscaled 3840x2160",
+        "Reduced motion and immediate skip",
+        "Synchronize hero headline with final layer exit",
+        "Preserve all six process panel compositions while replacing their photos with restored 4K exports",
+        "Final CTA as enlarged text and contact buttons without yellow card or tarp illustration"
+      ]
+    },
+    {
+      "scope": "catalog",
+      "choice": "Typed minimum and maximum price fields with explicit apply and Enter submission; no navigation while typing",
+      "source": "User request; 21st Price Range Input Group metadata (28324), implemented with existing field and button primitives"
+    },
+    {
+      "scope": "home and about",
+      "choice": "Full-width calculator immediately after Season; larger material descriptions and photos with gentle scroll motion; larger FAQ and animated final CTA; generated textile-roll photo under live about-page CTA text",
+      "source": "User screenshots and requests; 21st CTA search metadata; reuse SplitReveal, SectionReveal and PanelImage",
+      "constraints": [
+        "Keep framed about-page video unchanged",
+        "Remove visible intro skip button",
+        "Larger bare hero arrow",
+        "Respect reduced motion"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "fact": "design.colorMode:light",
+      "source": "app/globals.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "app/globals.css"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "AGENTS.md"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "DESIGN.md"
+    },
+    {
+      "fact": "project.stack:nextjs",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-10-11T19:03:40.467Z"
+}

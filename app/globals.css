@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+@theme {
+  --color-chalk: #e8ece5;
+  --color-paper: #f8f9f6;
+  --color-tarp: #28331f;
+  --color-tarp-2: #33402a;
+  --color-ink: #161b15;
+  --color-ink-soft: #4a5246;
+  --color-strap: #f4b400;
+  --color-strap-deep: #d99f00;
+  --color-oxford: #1f4fa6;
+  --color-seam: #9da696;
+  --color-line: #d3d9cf;
+  --color-ok: #1b7f3b;
+  --color-danger: #b42318;
+
+  --font-display: var(--font-alumni), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-golos), system-ui, sans-serif;
+  --font-tektur: var(--font-tektur-src), var(--font-alumni), sans-serif;
+  --font-manrope: var(--font-manrope-src), system-ui, sans-serif;
+  --font-jost: var(--font-jost-src), "Futura", system-ui, sans-serif;
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-curtain: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    background: var(--color-chalk);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.55;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 0.92;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-oxford);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: var(--color-strap);
+    color: var(--color-ink);
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .wrap {
+    width: 100%;
+    max-width: 82rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 768px) {
+    .wrap {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* Пунктирный шов — фирменный разделитель */
+  .seam {
+    background-image: linear-gradient(90deg, currentColor 55%, transparent 0);
+    background-size: 12px 2px;
+    background-repeat: repeat-x;
+    height: 2px;
+  }
+  .seam-box {
+    outline: 2px dashed color-mix(in oklab, currentColor 35%, transparent);
+    outline-offset: -8px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding: 0 1.4rem;
+    border-radius: 999px;
+    font-weight: 600;
+    transition:
+      transform 160ms var(--ease-out-quart),
+      background-color 160ms,
+      box-shadow 160ms;
+    white-space: nowrap;
+  }
+  .btn:active {
+    transform: scale(0.97);
+  }
+  .btn-strap {
+    background: var(--color-strap);
+    color: var(--color-ink);
+    box-shadow: inset 0 -3px 0 var(--color-strap-deep);
+  }
+  .btn-strap:hover {
+    background: #ffc21a;
+  }
+  .btn-ghost {
+    border: 1.5px solid currentColor;
+  }
+  .btn-ghost:hover {
+    background: color-mix(in oklab, currentColor 10%, transparent);
+  }
+  .btn-ink {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-ink:hover {
+    background: var(--color-tarp-2);
+  }
+
+  .field {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 12px;
+    border: 1.5px solid var(--color-line);
+    background: var(--color-paper);
+    padding: 0.7rem 0.9rem;
+    font-size: 1rem;
+    transition: border-color 150ms;
+  }
+  .field:hover {
+    border-color: var(--color-seam);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-oxford);
+  }
+  .field[aria-invalid="true"] {
+    border-color: var(--color-danger);
+  }
+
+  /* Люверс — маркер списков */
+  .grommet {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    border: 3.5px solid var(--color-seam);
+    background: transparent;
+    flex: none;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+  }
+
+  /* Матовое стекло */
+  .glass {
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.75), rgb(255 255 255 / 0.4));
+    border: 1px solid rgb(255 255 255 / 0.8);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 8px 24px -12px rgb(22 27 21 / 0.35);
+    backdrop-filter: blur(14px) saturate(1.4);
+  }
+  .glass-strong {
+    background: rgb(248 249 246 / 0.82);
+    border: 1px solid rgb(255 255 255 / 0.9);
+    box-shadow: 0 24px 48px -16px rgb(22 27 21 / 0.45);
+    backdrop-filter: blur(20px) saturate(1.5);
+  }
+  .glass-panel {
+    background: linear-gradient(160deg, rgb(248 249 246 / 0.92), rgb(232 236 229 / 0.78));
+    border: 1px solid rgb(255 255 255 / 0.35);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
+    backdrop-filter: blur(18px);
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .marquee-track {
+    animation: marquee var(--marquee-duration, 40s) linear infinite;
+  }
+  .marquee-track-rev {
+    animation-direction: reverse;
+  }
+}
+
+/* Мягкий блик по заголовку hero: светлая полоса медленно проходит по тексту */
+.hero-shine {
+  background-image: linear-gradient(100deg, #f8f9f6 0%, #f8f9f6 40%, #fff6cf 48%, #ffffff 50%, #fff6cf 52%, #f8f9f6 60%, #f8f9f6 100%);
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: hero-shine 6s ease-in-out infinite;
+  text-shadow: 0 0 40px rgb(244 180 0 / 0.12);
+}
+@keyframes hero-shine {
+  0%, 15% { background-position: 120% 0; }
+  70%, 100% { background-position: -20% 0; }
+}
+
+/* «Хром» с переливом цветов логотипа — для огромных заголовков на фото */
+.chrome-text {
+  background-image: linear-gradient(
+    105deg,
+    #9aa3a8 0%,
+    #ffffff 18%,
+    #c9d1d4 30%,
+    #00c4d9 42%,
+    #ffffff 50%,
+    #f4b400 58%,
+    #d7dcde 70%,
+    #ffffff 82%,
+    #9aa3a8 100%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: chrome-flow 9s ease-in-out infinite alternate;
+  filter: drop-shadow(0 4px 24px rgb(0 0 0 / 0.45));
+}
+@keyframes chrome-flow {
+  from { background-position: 0% 0; }
+  to { background-position: 100% 0; }
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
