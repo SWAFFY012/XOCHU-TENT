@@ -2,7 +2,7 @@
 /* eslint-disable react/display-name -- панели передаются как функции отрисовки, а не компоненты */
 
 import { motion, useInView, useMotionValueEvent, useReducedMotion, useTransform } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { PanelChapter, PanelImage, type PanelArgs } from "@/components/motion/PanelChapter";
@@ -63,14 +63,10 @@ export type MaterialPanel = {
   traits: [string, number][];
 };
 
-// Слои перед фото: цвета бренда, как во вступлении (Codrops RapidLayers)
-const REVEAL_LAYERS = ["bg-strap", "bg-tarp"];
-const EASE_IN_OUT: [number, number, number, number] = [0.45, 0, 0.55, 1];
-
 /**
- * Фото материала появляется слоями, как вступление сайта: жёлтый и зелёный слои
- * и само фото по очереди выезжают снизу, а картинка внутри каждого слоя едет навстречу.
- * Анимация запускается, когда панель становится активной и видна на экране; при возврате — повторяется.
+ * Появление фото материала: кадр раскрывается от горизонтальной линии по центру вверх и вниз,
+ * фото внутри проявляется из размытия и плавно уменьшается. Запускается, когда панель активна
+ * и видна на экране; при возврате к панели проигрывается снова.
  */
 function MaterialPhoto({ material, panel, className }: { material: MaterialPanel; panel: PanelArgs; className?: string }) {
   const reduce = useReducedMotion();
@@ -81,78 +77,40 @@ function MaterialPhoto({ material, panel, className }: { material: MaterialPanel
     setActive(Math.abs(v * (panel.total - 1) - panel.index) < 0.45);
   });
   const shown = reduce || (active && inView);
+  const ease: [number, number, number, number] = [0.76, 0, 0.24, 1];
 
-  const layers = [...REVEAL_LAYERS.map((c) => ({ key: c, color: c })), { key: "photo", color: "bg-white" }];
   return (
-    <div ref={box} className={`overflow-hidden ${className ?? ""}`}>
-      {layers.map((l, i) => (
-        <motion.div
-          key={l.key}
-          className={`absolute inset-0 overflow-hidden ${l.color}`}
+    <div ref={box} className={`overflow-hidden bg-paper ${className ?? ""}`}>
+      <motion.div
+        className="h-full w-full"
+        initial={false}
+        animate={{ clipPath: shown ? "inset(0% 0% 0% 0%)" : "inset(50% 0% 50% 0%)" }}
+        transition={{ duration: shown ? 1.1 : 0.4, ease }}
+      >
+        <motion.img
+          src={material.image}
+          alt={material.title}
+          className="h-full w-full object-cover"
+          loading="lazy"
           initial={false}
-          animate={shown ? { y: "0%" } : { y: "101%" }}
-          transition={shown ? { duration: 1.05, delay: i * 0.16, ease: EASE_IN_OUT } : { duration: 0.35, ease: "easeIn" }}
-        >
-          <motion.div
-            className="absolute inset-0"
-            initial={false}
-            animate={shown ? { y: "0%" } : { y: "-101%" }}
-            transition={shown ? { duration: 1.05, delay: i * 0.16, ease: EASE_IN_OUT } : { duration: 0.35, ease: "easeIn" }}
-          >
-            {l.key === "photo" && (
-              <motion.img
-                src={material.image}
-                alt={material.title}
-                className="h-full w-full object-cover"
-                loading="lazy"
-                initial={false}
-                animate={shown ? { scale: 1 } : { scale: 1.18 }}
-                transition={{ duration: 1.4, delay: shown ? i * 0.16 : 0, ease: [0.22, 1, 0.36, 1] }}
-              />
-            )}
-          </motion.div>
-        </motion.div>
-      ))}
+          animate={shown ? { scale: 1, filter: "blur(0px)" } : { scale: 1.3, filter: "blur(14px)" }}
+          transition={{ duration: shown ? 1.5 : 0.4, ease: [0.22, 1, 0.36, 1] }}
+        />
+      </motion.div>
     </div>
   );
 }
 
 /**
- * Название материала: на десктопе кегль подбирается так, чтобы слово тянулось от левого поля
- * до 80% ширины экрана и последними буквами заходило на фото (фото начинается с 64%).
+ * Название материала слева, фиксированным кеглем. Если слово длинное и заходит на фото
+ * (фото начинается с 64% ширины экрана), эта часть букв становится бирюзовой.
  */
-function FitTitle({ text }: { text: string }) {
-  const probe = useRef<HTMLSpanElement>(null);
-  const [size, setSize] = useState<number | null>(null);
-  useEffect(() => {
-    const fit = () => {
-      if (!probe.current) return;
-      if (window.innerWidth < 768) return setSize(null);
-      const w = probe.current.getBoundingClientRect().width;
-      // не крупнее 15vw: короткие слова (ПВХ) не раздуваются по высоте
-      if (w) setSize(Math.min(((window.innerWidth * 0.8 - window.innerWidth * 0.05) / w) * 100, window.innerWidth * 0.15));
-    };
-    fit();
-    document.fonts?.ready.then(fit);
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  }, []);
-  const cls = "font-manrope leading-[0.82] font-normal tracking-[-0.04em] uppercase whitespace-nowrap";
-  const style = size ? { fontSize: `${size}px` } : undefined;
+function MaterialTitle({ text }: { text: string }) {
+  const cls = "font-manrope text-[15.5vw] leading-[0.82] font-normal tracking-[-0.04em] whitespace-nowrap uppercase md:text-[11vw]";
   return (
-    <div className="relative mt-2 md:-ml-[5vw] md:w-screen md:pr-[20vw] md:pl-[5vw] md:text-right">
-      <span ref={probe} aria-hidden className={`${cls} pointer-events-none invisible absolute top-0 left-0 text-[100px]`}>
-        {text}
-      </span>
-      <h2 className={`${cls} text-[15.5vw] text-ink md:text-[12vw]`} style={style}>
-        {text}
-      </h2>
-      {/* цветная копия (бирюза логотипа) видна только поверх фото: обрезка по 64% ширины экрана */}
-      <span
-        aria-hidden
-        className={`${cls} pointer-events-none absolute inset-0 hidden text-[15.5vw] text-[#00b8cc] md:block md:pr-[20vw] md:pl-[5vw] md:text-right md:text-[12vw]`}
-        style={{ ...style, clipPath: "inset(0 0 0 64%)" }}
-      >
+    <div className="relative mt-2 md:-ml-[5vw] md:w-screen md:pl-[5vw]">
+      <h2 className={`${cls} text-ink`}>{text}</h2>
+      <span aria-hidden className={`${cls} pointer-events-none absolute inset-0 hidden text-[#00b8cc] md:block md:pl-[5vw]`} style={{ clipPath: "inset(0 0 0 64%)" }}>
         {text}
       </span>
     </div>
@@ -198,7 +156,7 @@ export function MaterialsChapter({ items }: { items: MaterialPanel[] }) {
               Материал {i + 1} из {items.length} · {m.density}
             </span>
 
-            <FitTitle text={m.title} />
+            <MaterialTitle text={m.title} />
 
             <p className="font-jost mt-5 max-w-[40ch] text-xl leading-snug md:text-[clamp(1.35rem,1.8vw,2.1rem)]">{m.text}</p>
 

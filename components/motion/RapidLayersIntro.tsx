@@ -44,9 +44,6 @@ export function RapidLayersIntro({ onReveal, onComplete }: { onReveal: () => voi
       if (finished || cancelled) return;
       finished = true;
       hasPlayed = true;
-      try {
-        sessionStorage.setItem("ht-intro", "1");
-      } catch {}
       animations.forEach((animation) => animation.cancel());
       unlock();
       reveal();
@@ -55,12 +52,7 @@ export function RapidLayersIntro({ onReveal, onComplete }: { onReveal: () => voi
     };
 
     // Never hold someone at the top when they followed a deep link or returned to the page.
-    // Повторный заход в той же вкладке — без вступления, сразу к сайту
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem("ht-intro") === "1";
-    } catch {}
-    const skip = hasPlayed || seen || preference.matches || !!window.location.hash || window.scrollY > 40;
+    const skip = hasPlayed || preference.matches || !!window.location.hash || window.scrollY > 40;
     const watchdog = setTimeout(finish, 7000);
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" || event.key === "Tab") finish();
