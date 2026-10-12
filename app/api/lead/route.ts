@@ -9,6 +9,7 @@ type Body = {
   city?: string;
   comment?: string;
   contact?: string;
+  telegram?: string;
   website?: string;
   consent: boolean;
   items: InItem[];
@@ -52,6 +53,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Проверьте имя и телефон." }, { status: 400 });
   }
   if (!body.consent) return NextResponse.json({ error: "Нужно согласие на обработку данных." }, { status: 400 });
+  // Ник Telegram обязателен, если клиент выбрал связь в Telegram
+  const tgMatch = clip(body.telegram, 64).match(/^(?:@|(?:https?:\/\/)?t\.me\/)?([a-zA-Z][a-zA-Z0-9_]{4,31})$/);
+  if (body.contact === "telegram" && !tgMatch) {
+    return NextResponse.json({ error: "Проверьте ник в Telegram." }, { status: 400 });
+  }
+  const telegram = body.contact === "telegram" && tgMatch ? "@" + tgMatch[1] : "";
   if (!Array.isArray(body.items) || !body.items.length || body.items.length > 50) {
     return NextResponse.json({ error: "Заявка пустая." }, { status: 400 });
   }
@@ -92,6 +99,7 @@ export async function POST(req: Request) {
     "",
     `👤 ${esc(name)}`,
     `📞 ${esc(phone)} — предпочитает ${CONTACT[body.contact ?? "phone"] ?? "звонок"}`,
+    telegram ? `✈️ Telegram: ${esc(telegram)}` : "",
     body.city ? `📍 ${esc(clip(body.city, 80))}` : "",
     body.comment ? `💬 ${esc(clip(body.comment, 1000))}` : "",
     "",

@@ -10,11 +10,11 @@ export const metadata: Metadata = {
 
 export default function CartPage() {
   return (
-    <div className="wrap pt-24 pb-20 md:pt-28">
-      <h1 className="text-[3.6rem] md:text-[6.5rem]">Заявка</h1>
-      <p className="mt-2 mb-8 max-w-[56ch] text-lg text-ink-soft">
-        Проверьте позиции и оставьте контакты.
-      </p>
+    <div className="wrap pt-[4.5rem] pb-16 md:pt-24">
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1 md:mb-5">
+        <h1 className="text-[2.6rem] md:text-[4.2rem]">Заявка</h1>
+        <p className="hidden text-lg text-ink-soft sm:block">Проверьте позиции и оставьте контакты — менеджер перезвонит.</p>
+      </div>
       <CartClient />
     </div>
   );

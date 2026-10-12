@@ -11,15 +11,18 @@ import { formatArea, formatPrice, formatSize, plural } from "@/lib/format";
 import { site } from "@/lib/site";
 
 type Status = { state: "idle" } | { state: "sending" } | { state: "done"; id: string } | { state: "error"; message: string };
-type Errors = Partial<Record<"name" | "phone" | "consent", string>>;
+type Errors = Partial<Record<"name" | "phone" | "telegram" | "consent", string>>;
 
 const PHONE_RE = /^\+?[\d\s\-()]{10,18}$/;
+// Ник Telegram: @username (5–32 символа: латиница, цифры, _) или ссылка t.me/username
+const TG_RE = /^(?:@|(?:https?:\/\/)?t\.me\/)?[a-zA-Z][a-zA-Z0-9_]{4,31}$/;
 
 export function CartClient() {
   const hydrated = useHydrated();
   const { items, setQty, remove, clear } = useCart();
   const [status, setStatus] = useState<Status>({ state: "idle" });
   const [errors, setErrors] = useState<Errors>({});
+  const [contact, setContact] = useState("phone");
   const total = cartTotal(items);
   const hasCustom = items.some((i) => i.custom);
 
@@ -31,13 +34,15 @@ export function CartClient() {
       phone: String(fd.get("phone") ?? "").trim(),
       city: String(fd.get("city") ?? "").trim(),
       comment: String(fd.get("comment") ?? "").trim(),
-      contact: String(fd.get("contact") ?? "phone"),
+      contact,
+      telegram: contact === "telegram" ? String(fd.get("telegram") ?? "").trim() : "",
       website: String(fd.get("website") ?? ""), // ловушка для ботов
       consent: fd.get("consent") === "on",
     };
     const errs: Errors = {};
     if (form.name.length < 2) errs.name = "Укажите имя, чтобы менеджер знал, как к вам обращаться.";
     if (!PHONE_RE.test(form.phone)) errs.phone = "Укажите телефон в формате +7 900 000-00-00.";
+    if (contact === "telegram" && !TG_RE.test(form.telegram)) errs.telegram = "Укажите ник в Telegram, например @hochutent.";
     if (!form.consent) errs.consent = "Без согласия на обработку данных мы не сможем связаться с вами.";
     setErrors(errs);
     if (Object.keys(errs).length) {
@@ -104,8 +109,8 @@ export function CartClient() {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-start">
-      <ul className="flex flex-col gap-3">
+    <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr] lg:items-start lg:gap-8">
+      <ul className="order-2 flex flex-col gap-3 lg:order-none">
         <AnimatePresence initial={false}>
           {items.map((i) => (
             <motion.li
@@ -153,7 +158,8 @@ export function CartClient() {
         </AnimatePresence>
       </ul>
 
-      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4 rounded-[28px] bg-paper p-5 md:p-7 lg:sticky lg:top-24">
+      {/* форма компактная: целиком помещается в экран, на телефоне — над списком товаров */}
+      <form onSubmit={onSubmit} noValidate className="order-1 flex flex-col gap-2.5 rounded-[28px] bg-paper p-4 sm:gap-3 md:p-6 lg:sticky lg:top-24 lg:order-none">
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-ink-soft">
             {items.length} {plural(items.length, "позиция", "позиции", "позиций")}
@@ -163,33 +169,64 @@ export function CartClient() {
         {hasCustom && <p className="text-sm text-ink-soft">В заявке есть нестандартные размеры: итог ориентировочный.</p>}
         <div className="seam text-line" />
 
-        <Field id="name" label="Имя" error={errors.name}>
-          <input id="f-name" name="name" autoComplete="name" className="field" aria-invalid={!!errors.name} aria-describedby="e-name" />
-        </Field>
-        <Field id="phone" label="Телефон" error={errors.phone}>
-          <input id="f-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 900 000-00-00" className="field" aria-invalid={!!errors.phone} aria-describedby="e-phone" />
-        </Field>
-        <Field id="city" label="Город доставки" hint="Необязательно">
-          <input id="f-city" name="city" autoComplete="address-level2" className="field" />
-        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field id="name" label="Имя" error={errors.name}>
+            <input id="f-name" name="name" autoComplete="name" className="field min-h-11 py-2" aria-invalid={!!errors.name} aria-describedby="e-name" />
+          </Field>
+          <Field id="phone" label="Телефон" error={errors.phone}>
+            <input id="f-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 900 000-00-00" className="field min-h-11 py-2" aria-invalid={!!errors.phone} aria-describedby="e-phone" />
+          </Field>
+        </div>
         <fieldset>
-          <legend className="mb-2 text-sm font-semibold">Как связаться</legend>
+          <legend className="mb-1.5 text-sm font-semibold">Как связаться</legend>
           <div className="grid grid-cols-3 gap-2 text-sm">
             {[
               ["phone", "Звонок"],
               ["telegram", "Telegram"],
               ["whatsapp", "WhatsApp"],
-            ].map(([v, l], idx) => (
-              <label key={v} className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper">
-                <input type="radio" name="contact" value={v} defaultChecked={idx === 0} className="sr-only" />
+            ].map(([v, l]) => (
+              <label key={v} className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-oxford">
+                <input type="radio" name="contact" value={v} checked={contact === v} onChange={() => setContact(v)} className="sr-only" />
                 {l}
               </label>
             ))}
           </div>
         </fieldset>
-        <Field id="comment" label="Комментарий" hint="Крепёж, сроки, ссылка на фото объекта">
-          <textarea id="f-comment" name="comment" rows={3} maxLength={1000} className="field resize-y" />
-        </Field>
+        {/* при выборе Telegram — поле для ника */}
+        <AnimatePresence initial={false}>
+          {contact === "telegram" && (
+            <motion.div
+              key="tg"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+              className="overflow-hidden"
+            >
+              <Field id="telegram" label="Ник в Telegram" hint="напишем вам туда" error={errors.telegram}>
+                <input
+                  id="f-telegram"
+                  name="telegram"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder="@username"
+                  className="field min-h-11 py-2"
+                  aria-invalid={!!errors.telegram}
+                  aria-describedby="e-telegram"
+                />
+              </Field>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1.4fr]">
+          <Field id="city" label="Город">
+            <input id="f-city" name="city" autoComplete="address-level2" placeholder="необязательно" className="field min-h-11 py-2" />
+          </Field>
+          <Field id="comment" label="Комментарий">
+            <input id="f-comment" name="comment" maxLength={1000} placeholder="крепёж, сроки" className="field min-h-11 py-2" />
+          </Field>
+        </div>
         <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
 
         <label className="flex items-start gap-3 text-sm">
