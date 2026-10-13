@@ -2,11 +2,14 @@
 
 import { motion, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue } from "framer-motion";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useMediaQuery } from "@/lib/hooks";
 
 /**
  * Горизонтальная глава как на icondetailing.ru: секция закрепляется,
  * а полноэкранные панели целиком уезжают влево, пока человек прокручивает вниз.
  * speed > 1 — прокрутка дольше, движение спокойнее.
+ * На телефоне панели идут друг под другом: закреплённая лента на тач-экране
+ * дёргается из-за меняющейся высоты окна браузера, а контент не влезает в 100vh.
  */
 export type PanelArgs = { progress: MotionValue<number>; index: number; total: number };
 
@@ -14,13 +17,17 @@ export function PanelChapter({
   panels,
   speed = 1.4,
   className,
+  mobilePanelClassName = "h-[100svh]",
 }: {
   panels: ((p: PanelArgs) => ReactNode)[];
   speed?: number;
   className?: string;
+  /** высота панели в вертикальном режиме (телефон) */
+  mobilePanelClassName?: string;
 }) {
   const section = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
+  const mobile = useMediaQuery("(max-width: 767px)");
   const [vw, setVw] = useState(0);
 
   useLayoutEffect(() => {
@@ -35,13 +42,11 @@ export function PanelChapter({
   const smooth = useSpring(scrollYProgress, { stiffness: 140, damping: 32, mass: 0.35 });
   const x = useTransform(smooth, [0, 1], [0, -distance]);
 
-  if (reduce) {
+  if (reduce || mobile) {
     return (
-      <section className={className}>
+      <section ref={section} className={className}>
         {panels.map((render, index) => (
-          <div key={index} className="min-h-screen">
-            {render({ progress: scrollYProgress, index, total: panels.length })}
-          </div>
+          <VerticalPanel key={index} index={index} total={panels.length} render={render} className={mobilePanelClassName} />
         ))}
       </section>
     );
@@ -59,6 +64,33 @@ export function PanelChapter({
         </motion.div>
       </div>
     </section>
+  );
+}
+
+/**
+ * Панель в вертикальном режиме. Свой прогресс прокрутки переводится в шкалу всей главы
+ * (панель index «активна» при значении index / (total - 1)), поэтому эффекты панелей
+ * работают одинаково в обоих режимах: 0 — панель только показалась снизу, 1 — дошла до верха.
+ */
+function VerticalPanel({
+  index,
+  total,
+  render,
+  className,
+}: {
+  index: number;
+  total: number;
+  render: (p: PanelArgs) => ReactNode;
+  className?: string;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: box, offset: ["start end", "start 0.25"] });
+  const step = total > 1 ? 1 / (total - 1) : 1;
+  const progress = useTransform(scrollYProgress, (v) => (index - 1 + v) * step);
+  return (
+    <div ref={box} className={`relative overflow-hidden ${className ?? ""}`}>
+      {render({ progress, index, total })}
+    </div>
   );
 }
 

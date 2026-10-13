@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, useScroll, useTransform, type MotionValue } from "framer-motion";
 import { useRef, type ReactNode } from "react";
+import { useMediaQuery } from "@/lib/hooks";
 
 export type RevealVariant = "curtain" | "unroll" | "seam" | "lift";
 
@@ -27,10 +28,12 @@ export function SectionReveal({ children, variant = "curtain", className, id, as
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "start 0.3"] });
   const p = useTransform(scrollYProgress, [0, 1], [0, 1], { clamp: true });
   const style = useVariantStyle(variant, p);
+  // На узком экране «шторы» срезают сам текст у краёв — там секция появляется без обрезки
+  const plain = useMediaQuery("(max-width: 767px)") && variant === "curtain";
   const Tag = as === "div" ? motion.div : motion.section;
 
   return (
-    <Tag ref={ref as never} id={id} className={className} style={reduce ? undefined : style}>
+    <Tag ref={ref as never} id={id} className={className} style={reduce || plain ? undefined : style}>
       {children}
     </Tag>
   );

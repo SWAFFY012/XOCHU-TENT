@@ -6,11 +6,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowDown, Star } from "lucide-react";
 import { site } from "@/lib/site";
 import { RapidLayersIntro } from "@/components/motion/RapidLayersIntro";
+import { useMediaQuery } from "@/lib/hooks";
 
 export type HeroSample = { title: string; size: string; price: string; href: string };
 
 // В огромном кегле точки «Ё» висят отдельно — визуально пишем «Е», для поиска и экранных дикторов — sr-only с «ё»
 const LINES = ["Утепленные шторы", "и тенты на заказ"];
+// На телефоне — четыре короткие строки: кегль в полтора раза крупнее
+const LINES_MOBILE = ["Утепленные", "шторы", "и тенты", "на заказ"];
 // Match the intro still; skip only the source video's opening black/fade frames.
 const VIDEO_START = 0.6;
 
@@ -72,22 +75,25 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
       {/* затемнение растёт по мере прокрутки — переход в следующую секцию */}
       <motion.div className="pointer-events-none absolute inset-0 -z-10 bg-ink" style={reduce ? { opacity: 0 } : { opacity: shade }} />
 
-      <motion.div className="wrap pt-28 pb-24 md:pb-28 md:[@media(max-height:820px)]:pb-20" style={reduce ? undefined : { y: textY, opacity: fade }}>
+      <motion.div className="wrap pt-24 pb-10 md:pt-28 md:pb-28 md:[@media(max-height:820px)]:pb-20" style={reduce ? undefined : { y: textY, opacity: fade }}>
         <HeroTitle reduce={!!reduce} ready={introReady} />
 
-        <p className="font-jost mt-5 text-lg leading-snug text-paper/90 md:text-[length:calc(1.45rem*var(--hero-k,1))]">
-          Сезонные хиты к зиме: утеплённые шторы для гаражей и складов, ПВХ-тенты, брезентовые шторы.
-          <br className="hidden md:block" /> Своё производство в Москве — шьём любые размеры за {site.productionDays}.
+        <p className="font-jost mt-4 text-[0.95rem] leading-snug text-paper/85 md:mt-5 md:text-[length:calc(1.45rem*var(--hero-k,1))] md:text-paper/90">
+          <span className="hidden md:inline">
+            Сезонные хиты к зиме: утеплённые шторы для гаражей и складов, ПВХ-тенты, брезентовые шторы.
+            <br />
+          </span>
+          Своё производство в Москве — шьём любые размеры за {site.productionDays}.
         </p>
 
-        <div className="mt-7 grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
-          <div>
+        <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-4 md:mt-7 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-6">
+          <div className="min-w-0">
             {/* живая «размерная лента»: сезонные товары с реальными ценами из прайса */}
             <Link
               href={s.href}
-              className="flex w-fit max-w-full items-center gap-4 overflow-hidden rounded-2xl border border-paper/15 bg-paper/12 py-2.5 pr-5 pl-2.5 backdrop-blur-md hover:bg-paper/18"
+              className="flex w-fit max-w-full items-center gap-3 overflow-hidden rounded-2xl border border-paper/15 bg-paper/12 py-2 pr-4 pl-2 backdrop-blur-md hover:bg-paper/18 md:gap-4 md:py-2.5 md:pr-5 md:pl-2.5"
             >
-              <span className="relative overflow-hidden rounded-xl bg-strap px-3.5 py-2 font-display text-[length:calc(2rem*var(--hero-k,1))] leading-none font-extrabold whitespace-nowrap text-ink">
+              <span className="relative shrink-0 overflow-hidden rounded-xl bg-strap px-3 py-1.5 font-display text-[1.5rem] md:px-3.5 md:py-2 md:text-[length:calc(2rem*var(--hero-k,1))] leading-none font-extrabold whitespace-nowrap text-ink">
                 <AnimatePresence mode="popLayout" initial={false}>
                   <motion.span
                     key={s.size + s.title}
@@ -104,7 +110,7 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={s.title + s.size}
-                  className="truncate text-lg"
+                  className="min-w-0 truncate text-[0.95rem] md:text-lg"
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
@@ -115,12 +121,13 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
               </AnimatePresence>
             </Link>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/catalog?cat=curtains" className="btn btn-strap min-h-14 px-8 text-lg">
+            <div className="mt-4 flex gap-2.5 md:mt-6 md:flex-wrap md:gap-3">
+              <Link href="/catalog?cat=curtains" className="btn btn-strap min-h-12 flex-1 px-4 text-base md:min-h-14 md:flex-none md:px-8 md:text-lg">
                 Утеплённые шторы
               </Link>
-              <Link href="/#calc" className="btn btn-ghost min-h-14 px-8 text-lg">
-                Рассчитать свой размер
+              <Link href="/#calc" className="btn btn-ghost min-h-12 flex-1 px-4 text-base md:min-h-14 md:flex-none md:px-8 md:text-lg">
+                <span className="md:hidden">Свой размер</span>
+                <span className="hidden md:inline">Рассчитать свой размер</span>
               </Link>
             </div>
           </div>
@@ -129,13 +136,13 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
             href={site.ozon}
             target="_blank"
             rel="noopener"
-            className="flex w-fit items-center gap-5 rounded-3xl border border-paper/25 bg-paper/10 px-6 py-5 backdrop-blur-md hover:border-paper/45"
+            className="flex w-fit items-center gap-4 rounded-2xl border border-paper/25 bg-paper/10 px-4 py-2.5 backdrop-blur-md hover:border-paper/45 md:gap-5 md:rounded-3xl md:px-6 md:py-5"
           >
-            <span className="flex items-center gap-2 font-display text-6xl font-extrabold">
-              <Star className="size-9 fill-strap text-strap" aria-hidden />
+            <span className="flex items-center gap-2 font-display text-4xl font-extrabold md:text-6xl">
+              <Star className="size-6 fill-strap text-strap md:size-9" aria-hidden />
               {site.ozonStats.rating}
             </span>
-            <span className="text-base leading-snug text-paper/85">
+            <span className="text-sm leading-snug text-paper/85 md:text-base">
               {site.ozonStats.reviews} отзывов
               <br />
               {site.ozonStats.orders} заказов на Ozon
@@ -148,7 +155,7 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
       <motion.a
         href={`#${nextId}`}
         aria-label="К следующему разделу"
-        className="absolute bottom-5 left-1/2 grid size-16 -translate-x-1/2 place-items-center text-paper hover:text-strap"
+        className="absolute bottom-3 left-1/2 hidden size-16 -translate-x-1/2 place-items-center text-paper hover:text-strap md:bottom-5 md:grid"
         style={reduce ? undefined : { opacity: fade }}
       >
         <motion.span
@@ -173,6 +180,7 @@ function HeroTitle({ reduce, ready }: { reduce: boolean; ready: boolean }) {
   const box = useRef<HTMLHeadingElement>(null);
   const probe = useRef<HTMLSpanElement>(null);
   const [size, setSize] = useState<number | null>(null);
+  const lines = useMediaQuery("(max-width: 767px)") ? LINES_MOBILE : LINES;
 
   useEffect(() => {
     if (reduce || !ready) return;
@@ -192,7 +200,7 @@ function HeroTitle({ reduce, ready }: { reduce: boolean; ready: boolean }) {
     const ro = new ResizeObserver(fit);
     if (box.current) ro.observe(box.current);
     return () => ro.disconnect();
-  }, []);
+  }, [lines]);
 
   let n = 0;
   return (
@@ -204,14 +212,14 @@ function HeroTitle({ reduce, ready }: { reduce: boolean; ready: boolean }) {
       <span className="sr-only">Утеплённые шторы и тенты на заказ от производителя «Хочу Тент»</span>
       {/* невидимые образцы для замера ширины строк */}
       <span ref={probe} aria-hidden className="pointer-events-none invisible absolute top-0 left-0 text-[100px] tracking-[-0.02em]">
-        {LINES.map((l) => (
+        {lines.map((l) => (
           <span key={l} className="block w-max">
             {l}
           </span>
         ))}
       </span>
       <span aria-hidden key={cycle} className="block">
-        {LINES.map((line) => (
+        {lines.map((line) => (
           <span key={line} className="block">
             {[...line].map((ch) => {
               const k = n++;

@@ -96,9 +96,9 @@ export default function Home() {
       <Season id="season" items={seasonItems} />
 
       {/* калькулятор нестандарта */}
-      <SectionReveal variant="seam" id="calc" className="flex min-h-[100svh] flex-col justify-center bg-tarp px-4 py-20 text-paper md:px-[4vw] md:py-24">
+      <SectionReveal variant="seam" id="calc" className="flex min-h-[100svh] flex-col justify-center bg-tarp px-4 pt-20 pb-8 text-paper max-md:[@media(max-height:700px)]:pt-[4.25rem] md:px-[4vw] md:py-24">
         <div className="w-full">
-          <SplitReveal text="Нет нужного размера? Сошьём" className="mb-10 text-[clamp(3.6rem,8vw,10rem)] leading-[0.95]" />
+          <SplitReveal text="Нет нужного размера? Сошьём" className="mb-5 text-[clamp(2.9rem,8vw,10rem)] leading-[0.95] md:mb-10 max-md:[@media(max-height:700px)]:mb-3 max-md:[@media(max-height:700px)]:text-[2.3rem]" />
           <CustomCalc
             products={all
               .filter((p) => p.category !== "fabric")

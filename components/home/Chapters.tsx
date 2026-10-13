@@ -120,8 +120,8 @@ function MaterialTitle({ text }: { text: string }) {
 /** Характеристика в виде «стата» из игры: подпись, 5 крупных сегментов и оценка цифрой */
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-line py-3 md:py-3.5">
-      <dt className="font-jost text-lg md:text-xl">{label}</dt>
+    <div className="flex items-center justify-between gap-4 border-b border-line py-2.5 md:py-3.5">
+      <dt className="font-jost text-base md:text-xl">{label}</dt>
       <dd className="flex items-center gap-3">
         <span className="flex gap-1" aria-hidden>
           {Array.from({ length: 5 }, (_, j) => (
@@ -146,29 +146,30 @@ export function MaterialsChapter({ items }: { items: MaterialPanel[] }) {
     <PanelChapter
       className="bg-paper"
       speed={0.55}
+      mobilePanelClassName="border-t border-line first:border-t-0"
       panels={items.map((m, i) => (p: PanelArgs) => (
         <div className="relative h-full">
           {/* фото: на телефоне — полоса сверху, на десктопе — правая треть во всю высоту */}
-          <MaterialPhoto material={m} panel={p} className="absolute inset-x-0 top-16 h-[26vh] md:inset-y-0 md:top-0 md:right-0 md:left-auto md:h-full md:w-[36%]" />
+          <MaterialPhoto material={m} panel={p} className="relative mx-4 mt-6 h-[38vh] rounded-3xl md:absolute md:inset-y-0 md:right-0 md:mx-0 md:mt-0 md:h-full md:w-[36%] md:rounded-none" />
 
-          <div className="relative flex h-full flex-col px-6 pt-[calc(26vh+5rem)] pb-8 md:w-[64%] md:px-[5vw] md:pt-28 md:pb-10">
-            <span className="font-jost text-lg text-ink-soft md:text-xl">
+          <div className="relative flex h-full flex-col px-4 pt-5 pb-12 md:w-[64%] md:px-[5vw] md:pt-28 md:pb-10">
+            <span className="font-jost text-base text-ink-soft md:text-xl">
               Материал {i + 1} из {items.length} · {m.density}
             </span>
 
             <MaterialTitle text={m.title} />
 
-            <p className="font-jost mt-5 max-w-[40ch] text-xl leading-snug md:text-[clamp(1.35rem,1.8vw,2.1rem)]">{m.text}</p>
+            <p className="font-jost mt-4 max-w-[40ch] text-[1.05rem] leading-snug md:mt-5 md:text-[clamp(1.35rem,1.8vw,2.1rem)]">{m.text}</p>
 
-            <dl className="mt-6 grid max-w-3xl gap-x-10 md:grid-cols-2">
+            <dl className="mt-4 grid max-w-3xl gap-x-10 md:mt-6 md:grid-cols-2">
               {m.traits.map(([k, v]) => (
                 <Stat key={k} label={k} value={v} />
               ))}
             </dl>
 
             <div className="mt-auto flex flex-wrap items-center gap-4 pt-6">
-              <span className="font-display text-4xl font-extrabold">от {m.perM2} за м²</span>
-              <Link href={`/catalog?mat=${m.id}`} className="btn btn-ink min-h-14 px-7 text-lg">
+              <span className="font-display text-3xl font-extrabold md:text-4xl">от {m.perM2} за м²</span>
+              <Link href={`/catalog?mat=${m.id}`} className="btn btn-ink min-h-12 px-6 text-base md:min-h-14 md:px-7 md:text-lg">
                 Изделия <ArrowUpRight className="size-4" aria-hidden />
               </Link>
             </div>
