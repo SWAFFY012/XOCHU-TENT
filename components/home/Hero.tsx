@@ -61,7 +61,7 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
   return (
     <>
     <RapidLayersIntro onReveal={revealHero} onComplete={playHero} />
-    <section ref={ref} className="hero-unscaled relative isolate flex min-h-[100svh] items-end overflow-hidden bg-tarp text-paper">
+    <section ref={ref} className="hero-scale relative isolate flex min-h-[100svh] items-end overflow-hidden bg-tarp text-paper">
       <motion.div className="absolute inset-0 -z-10" style={reduce ? undefined : { scale: videoScale }}>
         <video ref={video} onLoadedMetadata={(event) => { event.currentTarget.currentTime = VIDEO_START; }} className="h-full w-full object-cover" muted loop playsInline preload="auto" poster="/intro/video-start-1920.webp" aria-hidden>
           <source src="/hero-720.mp4" type="video/mp4" media="(max-width: 767px)" />
@@ -72,10 +72,10 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
       {/* затемнение растёт по мере прокрутки — переход в следующую секцию */}
       <motion.div className="pointer-events-none absolute inset-0 -z-10 bg-ink" style={reduce ? { opacity: 0 } : { opacity: shade }} />
 
-      <motion.div className="wrap pt-28 pb-24 md:pb-28" style={reduce ? undefined : { y: textY, opacity: fade }}>
+      <motion.div className="wrap pt-28 pb-24 md:pb-28 md:[@media(max-height:820px)]:pb-20" style={reduce ? undefined : { y: textY, opacity: fade }}>
         <HeroTitle reduce={!!reduce} ready={introReady} />
 
-        <p className="font-jost mt-5 text-lg leading-snug text-paper/90 md:text-[1.45rem]">
+        <p className="font-jost mt-5 text-lg leading-snug text-paper/90 md:text-[length:calc(1.45rem*var(--hero-k,1))]">
           Сезонные хиты к зиме: утеплённые шторы для гаражей и складов, ПВХ-тенты, брезентовые шторы.
           <br className="hidden md:block" /> Своё производство в Москве — шьём любые размеры за {site.productionDays}.
         </p>
@@ -87,7 +87,7 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
               href={s.href}
               className="flex w-fit max-w-full items-center gap-4 overflow-hidden rounded-2xl border border-paper/15 bg-paper/12 py-2.5 pr-5 pl-2.5 backdrop-blur-md hover:bg-paper/18"
             >
-              <span className="relative overflow-hidden rounded-xl bg-strap px-3.5 py-2 font-display text-[2rem] leading-none font-extrabold whitespace-nowrap text-ink">
+              <span className="relative overflow-hidden rounded-xl bg-strap px-3.5 py-2 font-display text-[length:calc(2rem*var(--hero-k,1))] leading-none font-extrabold whitespace-nowrap text-ink">
                 <AnimatePresence mode="popLayout" initial={false}>
                   <motion.span
                     key={s.size + s.title}

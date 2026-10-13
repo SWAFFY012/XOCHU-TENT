@@ -26,27 +26,35 @@
 }
 
 /* Масштаб 90% на десктопе: всё, что задано в rem, становится на 10% компактнее.
-   Hero (.hero-unscaled) возвращает прежние размеры через переопределение переменных Tailwind. */
+   Hero (.hero-scale) крупнее исходного на 10%: переменные Tailwind умножаются на --hero-k = 1.1 / 0.9. */
 @media (min-width: 768px) {
   html {
     font-size: 90%;
   }
-  .hero-unscaled {
-    --spacing: calc(0.25rem / 0.9);
-    --text-xs: calc(0.75rem / 0.9);
-    --text-sm: calc(0.875rem / 0.9);
-    --text-base: calc(1rem / 0.9);
-    --text-lg: calc(1.125rem / 0.9);
-    --text-xl: calc(1.25rem / 0.9);
-    --text-2xl: calc(1.5rem / 0.9);
-    --text-3xl: calc(1.875rem / 0.9);
-    --text-4xl: calc(2.25rem / 0.9);
-    --text-5xl: calc(3rem / 0.9);
-    --text-6xl: calc(3.75rem / 0.9);
-    font-size: calc(1rem / 0.9);
+  .hero-scale {
+    --hero-k: calc(1.1 / 0.9);
+    --spacing: calc(0.25rem * var(--hero-k));
+    --text-xs: calc(0.75rem * var(--hero-k));
+    --text-sm: calc(0.875rem * var(--hero-k));
+    --text-base: calc(1rem * var(--hero-k));
+    --text-lg: calc(1.125rem * var(--hero-k));
+    --text-xl: calc(1.25rem * var(--hero-k));
+    --text-2xl: calc(1.5rem * var(--hero-k));
+    --text-3xl: calc(1.875rem * var(--hero-k));
+    --text-4xl: calc(2.25rem * var(--hero-k));
+    --text-5xl: calc(3rem * var(--hero-k));
+    --text-6xl: calc(3.75rem * var(--hero-k));
+    --radius-xl: calc(0.75rem * var(--hero-k));
+    --radius-2xl: calc(1rem * var(--hero-k));
+    --radius-3xl: calc(1.5rem * var(--hero-k));
+    font-size: calc(1rem * var(--hero-k));
   }
-  .hero-unscaled .btn {
-    padding-inline: calc(1.4rem / 0.9);
+  .hero-scale .wrap {
+    max-width: calc(82rem * var(--hero-k));
+    padding-inline: calc(2rem * var(--hero-k));
+  }
+  .hero-scale .btn {
+    padding-inline: calc(1.4rem * var(--hero-k));
   }
 }
 
