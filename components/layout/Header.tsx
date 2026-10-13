@@ -62,7 +62,7 @@ export function Header() {
             {NAV.map((n) => {
               const active = path.startsWith(n.href);
               return (
-                <Link key={n.href} href={n.href} className="group relative py-2 text-[1.05rem] font-medium">
+                <Link key={n.href} href={n.href} className="group relative py-2 text-[1.25rem] font-medium lg:text-[1.4rem]">
                   <span>{n.label}</span>
                   {/* подчёркивание: растёт от центра при наведении, у активного пункта — всегда */}
                   <span

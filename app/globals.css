@@ -25,6 +25,31 @@
   --ease-curtain: cubic-bezier(0.76, 0, 0.24, 1);
 }
 
+/* Масштаб 90% на десктопе: всё, что задано в rem, становится на 10% компактнее.
+   Hero (.hero-unscaled) возвращает прежние размеры через переопределение переменных Tailwind. */
+@media (min-width: 768px) {
+  html {
+    font-size: 90%;
+  }
+  .hero-unscaled {
+    --spacing: calc(0.25rem / 0.9);
+    --text-xs: calc(0.75rem / 0.9);
+    --text-sm: calc(0.875rem / 0.9);
+    --text-base: calc(1rem / 0.9);
+    --text-lg: calc(1.125rem / 0.9);
+    --text-xl: calc(1.25rem / 0.9);
+    --text-2xl: calc(1.5rem / 0.9);
+    --text-3xl: calc(1.875rem / 0.9);
+    --text-4xl: calc(2.25rem / 0.9);
+    --text-5xl: calc(3rem / 0.9);
+    --text-6xl: calc(3.75rem / 0.9);
+    font-size: calc(1rem / 0.9);
+  }
+  .hero-unscaled .btn {
+    padding-inline: calc(1.4rem / 0.9);
+  }
+}
+
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;

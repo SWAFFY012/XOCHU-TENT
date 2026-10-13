@@ -61,7 +61,7 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
   return (
     <>
     <RapidLayersIntro onReveal={revealHero} onComplete={playHero} />
-    <section ref={ref} className="relative isolate flex min-h-[100svh] items-end overflow-hidden bg-tarp text-paper">
+    <section ref={ref} className="hero-unscaled relative isolate flex min-h-[100svh] items-end overflow-hidden bg-tarp text-paper">
       <motion.div className="absolute inset-0 -z-10" style={reduce ? undefined : { scale: videoScale }}>
         <video ref={video} onLoadedMetadata={(event) => { event.currentTarget.currentTime = VIDEO_START; }} className="h-full w-full object-cover" muted loop playsInline preload="auto" poster="/intro/video-start-1920.webp" aria-hidden>
           <source src="/hero-720.mp4" type="video/mp4" media="(max-width: 767px)" />
