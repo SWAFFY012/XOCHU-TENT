@@ -58,9 +58,9 @@ const aliases = new Map(
     .map((pair) => pair.split("=").map((x) => norm(x))),
 );
 // Служебные слова в именах файлов
-const NOISE = /^(утп|ут|окс|доп|допы|допв|карточки|вариант\d*|\d+)$/;
+const NOISE = /^(утп|ут|окс|доп|допы|допв|карточки|вариант\d*|\d+|хт|ткань\S*)$/;
 // Синонимы цветов, если в прайсе цвет назван иначе
-const SYNONYMS = { зел: "оливковый", зеленый: "оливковый", зелёный: "оливковый" };
+const SYNONYMS = { зел: "оливковый", зеленый: "оливковый", зелёный: "оливковый", оливк: "хаки", оливковый: "хаки" };
 
 const prefixLen = (a, b) => {
   let i = 0;
@@ -79,7 +79,9 @@ const similar = (w, value) =>
   words(value).some((x) => x.startsWith(w) || (w.length >= 4 && prefixLen(w, x) >= 4) || (w.length >= 6 && lev(w, x) <= 1));
 
 function matchWord(raw) {
-  const w = SYNONYMS[raw] && product.colors.some((c) => norm(c) === SYNONYMS[raw]) ? SYNONYMS[raw] : raw;
+  // синоним — только если сам цвет у товара не найден
+  const syn = SYNONYMS[raw];
+  const w = syn && product.colors.some((c) => norm(c) === syn) && !product.colors.some((c) => similar(raw, c)) ? syn : raw;
   const colors = product.colors.filter((c) => similar(w, c));
   const options = product.options.filter((o) => similar(w, o) || (w.length >= 4 && norm(o).includes(w)));
   if (colors.length === 1 && !options.length) return { color: colors[0] };
@@ -91,8 +93,9 @@ function matchWord(raw) {
 /** Ключ из имени -> { axis, value }; value — пропитка, цвет или «пропитка|цвет» */
 function matchKey(token) {
   const t = norm(token);
-  // «БежУТП_ОКС» -> «беж»: служебные приставки бывают склеены с цветом
-  const src = aliases.get(t) ?? t.replace(/утп|окс/g, " ");
+  // «БежУТП_ОКС» -> «беж»: служебные приставки бывают склеены с цветом;
+  // «ТканьОксфорд» убираем целиком до этого, иначе от него остаётся «форд»
+  const src = aliases.get(t) ?? t.replace(/ткань\S*/g, " ").replace(/утп|окс/g, " ");
   let option;
   let color;
   let any = false;
@@ -137,6 +140,9 @@ const TR = { а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: 
 const latin = (s) => [...norm(s)].map((c) => TR[c] ?? (/[a-z0-9]/.test(c) ? c : "-")).join("").replace(/-+/g, "-").replace(/^-|-$/g, "");
 const keySlug = (key) => latin(key.replace("|", "-"));
 const plainSize = (s) => s.replace(/\s/g, "").replace(/[,.]/g, "").replace(/[xXХ]/g, "х");
+// «10,0х0,9» и «10х0,9» — один размер: сравниваем ещё и как числа
+const numSize = (s) =>
+  s.replace(/\s/g, "").split(/[xXХх]/).map((n) => String(Number(n.replace(",", ".")))).join("х");
 
 const outRoot = path.join(root, "public", "products", slug);
 const urlOf = (abs) => "/" + path.relative(path.join(root, "public"), abs).split(path.sep).join("/");
@@ -223,6 +229,7 @@ for (const name of readdirSync(srcDir)) {
   // Размеры: размер ищется в любом сегменте пути, остальное — ключ
   if (isDir && /^размеры$/i.test(name)) {
     const byPlain = new Map(product.variants.map((v) => [plainSize(v.size), v.size]));
+    const byNum = new Map(product.variants.map((v) => [numSize(v.size), v.size]));
     const walk = (dir, segs) => {
       for (const f of readdirSync(dir)) {
         const p = path.join(dir, f);
@@ -231,7 +238,7 @@ for (const name of readdirSync(srcDir)) {
           const all = [...segs, baseName(f)];
           const sizeSeg = all.find((s) => SIZE.test(s) || /^\d+х\d+$/i.test(s));
           const sizeRaw = sizeSeg?.match(SIZE)?.[0] ?? sizeSeg;
-          const size = sizeRaw && byPlain.get(plainSize(sizeRaw));
+          const size = sizeRaw && (byNum.get(numSize(sizeRaw)) ?? byPlain.get(plainSize(sizeRaw)));
           if (!size) {
             unknown.add(`размер ${sizeRaw ?? f}`);
             continue;
@@ -266,9 +273,10 @@ for (const key of keys) {
   });
 }
 
-// Нет обложки — берём карточку размера, ближайшего к медианной площади товара
+// Нет обложки — берём карточку размера, ближайшего к медианной площади товара.
+// Ткань на отрез продаётся от 1 м, и цена «от» — за него: обложка — самый короткий отрез
 const areas = product.variants.map((v) => v.area).sort((a, b) => a - b);
-const midArea = areas[Math.floor(areas.length / 2)];
+const midArea = product.category === "fabric" ? areas[0] : areas[Math.floor(areas.length / 2)];
 const areaOf = Object.fromEntries(product.variants.map((v) => [v.size, v.area]));
 for (const [key, bySize] of Object.entries(manifest.sizes)) {
   if (manifest.covers[key]) continue;

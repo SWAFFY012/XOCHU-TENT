@@ -1,0 +1,98 @@
+{
+ "slug": "tkan-brezent",
+ "axis": "option",
+ "covers": {
+  "ВО — водоупорная": "/products/tkan-brezent/sizes/vo-vodoupornaya/1x09.webp",
+  "ОП — огнеупорная": "/products/tkan-brezent/sizes/op-ogneupornaya/1x09.webp",
+  "СКПВ — от гнили и плесени": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/1x09.webp"
+ },
+ "gallery": {
+  "ВО — водоупорная": [
+   "/products/tkan-brezent/gallery/vo-vodoupornaya/02.webp",
+   "/products/tkan-brezent/gallery/vo-vodoupornaya/03.webp",
+   "/products/tkan-brezent/gallery/vo-vodoupornaya/04.webp",
+   "/products/tkan-brezent/gallery/vo-vodoupornaya/05.webp",
+   "/products/tkan-brezent/gallery/vo-vodoupornaya/06.webp"
+  ],
+  "ОП — огнеупорная": [
+   "/products/tkan-brezent/gallery/op-ogneupornaya/02.webp",
+   "/products/tkan-brezent/gallery/op-ogneupornaya/03.webp",
+   "/products/tkan-brezent/gallery/op-ogneupornaya/04.webp",
+   "/products/tkan-brezent/gallery/op-ogneupornaya/05.webp",
+   "/products/tkan-brezent/gallery/op-ogneupornaya/06.webp"
+  ],
+  "СКПВ — от гнили и плесени": [
+   "/products/tkan-brezent/gallery/skpv-ot-gnili-i-pleseni/02.webp",
+   "/products/tkan-brezent/gallery/skpv-ot-gnili-i-pleseni/03.webp",
+   "/products/tkan-brezent/gallery/skpv-ot-gnili-i-pleseni/04.webp",
+   "/products/tkan-brezent/gallery/skpv-ot-gnili-i-pleseni/05.webp",
+   "/products/tkan-brezent/gallery/skpv-ot-gnili-i-pleseni/06.webp"
+  ]
+ },
+ "sizes": {
+  "ВО — водоупорная": {
+   "1х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/1x09.webp",
+   "10х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/10x09.webp",
+   "11х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/11x09.webp",
+   "12х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/12x09.webp",
+   "13х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/13x09.webp",
+   "14х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/14x09.webp",
+   "15х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/15x09.webp",
+   "16х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/16x09.webp",
+   "17х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/17x09.webp",
+   "18х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/18x09.webp",
+   "19х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/19x09.webp",
+   "2х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/2x09.webp",
+   "3х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/3x09.webp",
+   "4х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/4x09.webp",
+   "5х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/5x09.webp",
+   "6х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/6x09.webp",
+   "7х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/7x09.webp",
+   "8х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/8x09.webp",
+   "9х0,9": "/products/tkan-brezent/sizes/vo-vodoupornaya/9x09.webp"
+  },
+  "ОП — огнеупорная": {
+   "1х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/1x09.webp",
+   "10х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/10x09.webp",
+   "12х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/12x09.webp",
+   "13х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/13x09.webp",
+   "14х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/14x09.webp",
+   "15х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/15x09.webp",
+   "16х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/16x09.webp",
+   "17х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/17x09.webp",
+   "18х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/18x09.webp",
+   "19х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/19x09.webp",
+   "2х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/2x09.webp",
+   "20х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/20x09.webp",
+   "3х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/3x09.webp",
+   "4х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/4x09.webp",
+   "5х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/5x09.webp",
+   "6х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/6x09.webp",
+   "7х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/7x09.webp",
+   "8х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/8x09.webp",
+   "9х0,9": "/products/tkan-brezent/sizes/op-ogneupornaya/9x09.webp"
+  },
+  "СКПВ — от гнили и плесени": {
+   "1х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/1x09.webp",
+   "10х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/10x09.webp",
+   "11х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/11x09.webp",
+   "12х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/12x09.webp",
+   "13х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/13x09.webp",
+   "14х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/14x09.webp",
+   "15х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/15x09.webp",
+   "16х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/16x09.webp",
+   "17х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/17x09.webp",
+   "18х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/18x09.webp",
+   "19х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/19x09.webp",
+   "2х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/2x09.webp",
+   "20х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/20x09.webp",
+   "3х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/3x09.webp",
+   "4х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/4x09.webp",
+   "5х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/5x09.webp",
+   "6х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/6x09.webp",
+   "7х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/7x09.webp",
+   "8х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/8x09.webp",
+   "9х0,9": "/products/tkan-brezent/sizes/skpv-ot-gnili-i-pleseni/9x09.webp"
+  }
+ }
+}
