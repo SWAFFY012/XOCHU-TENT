@@ -8,8 +8,8 @@ export const site = {
   inn: "000000000000", // TODO
   ogrn: "000000000000000", // TODO
   url: "https://hochutent.ru", // TODO: боевой домен (для canonical, sitemap, OG)
-  phone: "+7 (900) 000-00-00", // TODO
-  phoneHref: "tel:+79000000000", // TODO
+  phone: "+7 (988) 418-68-86",
+  phoneHref: "tel:+79884186886",
   email: "zakaz@hochutent.ru", // TODO
   telegram: "https://t.me/hochutent", // TODO
   whatsapp: "https://wa.me/79000000000", // TODO
