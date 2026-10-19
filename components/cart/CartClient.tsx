@@ -4,14 +4,19 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { CheckCircle2, Loader2, Minus, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, CreditCard, Loader2, Minus, Navigation, Plus, Send, Trash2 } from "lucide-react";
 import { ProductArt } from "@/components/ProductArt";
-import { cartTotal, useCart, useHydrated } from "@/lib/cart";
-import { formatArea, formatPrice, formatSize, plural } from "@/lib/format";
-import { site } from "@/lib/site";
+import { cartTotal, cartWeight, useCart, useHydrated } from "@/lib/cart";
+import { formatArea, formatPrice, formatSize, formatWeight, plural } from "@/lib/format";
+import { deliveryServices, routeUrl, site, type DeliveryServiceId } from "@/lib/site";
 
-type Status = { state: "idle" } | { state: "sending" } | { state: "done"; id: string } | { state: "error"; message: string };
-type Errors = Partial<Record<"name" | "phone" | "telegram" | "consent", string>>;
+type Intent = "pay" | "lead";
+type Status =
+  | { state: "idle" }
+  | { state: "sending"; intent: Intent }
+  | { state: "done"; id: string; intent: Intent }
+  | { state: "error"; message: string };
+type Errors = Partial<Record<"name" | "phone" | "telegram" | "city" | "consent", string>>;
 
 const PHONE_RE = /^\+?[\d\s\-()]{10,18}$/;
 // Ник Telegram: @username (5–32 символа: латиница, цифры, _) или ссылка t.me/username
@@ -23,11 +28,17 @@ export function CartClient() {
   const [status, setStatus] = useState<Status>({ state: "idle" });
   const [errors, setErrors] = useState<Errors>({});
   const [contact, setContact] = useState("phone");
+  const [delivery, setDelivery] = useState<"pickup" | "delivery">("pickup");
+  const [service, setService] = useState<DeliveryServiceId>("cdek");
   const total = cartTotal(items);
+  const weight = cartWeight(items);
   const hasCustom = items.some((i) => i.custom);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // Какой кнопкой отправили форму: «Оплатить» или «Отправить заявку»
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const intent: Intent = submitter?.value === "pay" ? "pay" : "lead";
     const fd = new FormData(e.currentTarget);
     const form = {
       name: String(fd.get("name") ?? "").trim(),
@@ -36,6 +47,9 @@ export function CartClient() {
       comment: String(fd.get("comment") ?? "").trim(),
       contact,
       telegram: contact === "telegram" ? String(fd.get("telegram") ?? "").trim() : "",
+      delivery,
+      service: delivery === "delivery" ? service : "",
+      intent,
       website: String(fd.get("website") ?? ""), // ловушка для ботов
       consent: fd.get("consent") === "on",
     };
@@ -43,6 +57,7 @@ export function CartClient() {
     if (form.name.length < 2) errs.name = "Укажите имя, чтобы менеджер знал, как к вам обращаться.";
     if (!PHONE_RE.test(form.phone)) errs.phone = "Укажите телефон в формате +7 900 000-00-00.";
     if (contact === "telegram" && !TG_RE.test(form.telegram)) errs.telegram = "Укажите ник в Telegram, например @hochutent.";
+    if (delivery === "delivery" && form.city.length < 2) errs.city = "Укажите город доставки — посчитаем стоимость.";
     if (!form.consent) errs.consent = "Без согласия на обработку данных мы не сможем связаться с вами.";
     setErrors(errs);
     if (Object.keys(errs).length) {
@@ -50,7 +65,7 @@ export function CartClient() {
       return;
     }
 
-    setStatus({ state: "sending" });
+    setStatus({ state: "sending", intent });
     try {
       const res = await fetch("/api/lead", {
         method: "POST",
@@ -63,7 +78,7 @@ export function CartClient() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Заявка не отправилась.");
       clear();
-      setStatus({ state: "done", id: data.id });
+      setStatus({ state: "done", id: data.id, intent });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setStatus({ state: "error", message: err instanceof Error ? err.message : "Заявка не отправилась." });
@@ -79,7 +94,12 @@ export function CartClient() {
         className="rounded-[32px] bg-tarp p-8 text-paper md:p-14"
       >
         <CheckCircle2 className="size-14 text-strap" aria-hidden />
-        <h2 className="mt-5 text-[3.2rem] md:text-7xl">Заявка №{status.id} принята</h2>
+        <h2 className="mt-5 text-[3.2rem] md:text-7xl">{status.intent === "pay" ? `Заказ №${status.id} оформлен` : `Заявка №${status.id} принята`}</h2>
+        <p className="mt-4 max-w-[52ch] text-lg text-paper/80">
+          {status.intent === "pay"
+            ? `Онлайн-оплата на сайте скоро заработает. Пока менеджер проверит заказ и пришлёт ссылку на оплату — обычно за ${site.responseTime}.`
+            : `Менеджер свяжется с вами в течение ${site.responseTime} в рабочее время.`}
+        </p>
         <Link href="/catalog" className="btn btn-strap mt-8">
           Вернуться в каталог
         </Link>
@@ -166,6 +186,10 @@ export function CartClient() {
           </span>
           <span className="font-display text-5xl leading-none font-extrabold">{formatPrice(total)}</span>
         </div>
+        <p className="-mt-1 text-sm text-ink-soft">
+          {weight > 0 && <>Вес заказа ≈ {formatWeight(weight)} · </>}
+          {delivery === "pickup" ? "самовывоз бесплатно" : "доставка по тарифу службы"}
+        </p>
         {hasCustom && <p className="text-sm text-ink-soft">В заявке есть нестандартные размеры: итог ориентировочный.</p>}
         <div className="seam text-line" />
 
@@ -219,12 +243,50 @@ export function CartClient() {
             </motion.div>
           )}
         </AnimatePresence>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1.4fr]">
-          <Field id="city" label="Город">
-            <input id="f-city" name="city" autoComplete="address-level2" placeholder="необязательно" className="field min-h-11 py-2" />
-          </Field>
+        {/* получение: самовывоз из Янино-1 или доставка службой */}
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-semibold">Получение</legend>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            {(
+              [
+                ["pickup", "Самовывоз"],
+                ["delivery", "Доставка"],
+              ] as const
+            ).map(([v, l]) => (
+              <label key={v} className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line font-semibold has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-oxford">
+                <input type="radio" name="delivery" value={v} checked={delivery === v} onChange={() => setDelivery(v)} className="sr-only" />
+                {l}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {delivery === "pickup" ? (
+          <p className="flex items-start justify-between gap-3 rounded-xl bg-ink/5 px-3 py-2.5 text-sm">
+            <span>
+              <b className="font-semibold">Бесплатно.</b> {site.addressShort}, {site.region}
+            </span>
+            <a href={routeUrl} target="_blank" rel="noopener" className="flex shrink-0 items-center gap-1 font-semibold text-oxford underline-offset-2 hover:underline">
+              <Navigation className="size-3.5" aria-hidden /> Маршрут
+            </a>
+          </p>
+        ) : (
+          <div role="radiogroup" aria-label="Служба доставки" className="flex flex-wrap gap-1 text-[0.8rem] sm:text-[0.82rem]">
+            {deliveryServices.map((d) => (
+              <label key={d.id} title={d.note} className="flex min-h-10 grow cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line px-2 has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-oxford">
+                <input type="radio" name="service" value={d.id} checked={service === d.id} onChange={() => setService(d.id)} className="sr-only" />
+                {d.title}
+              </label>
+            ))}
+          </div>
+        )}
+        <div className={delivery === "delivery" ? "grid gap-3 sm:grid-cols-[1fr_1.4fr]" : "grid gap-3"}>
+          {delivery === "delivery" && (
+            <Field id="city" label="Город доставки" error={errors.city}>
+              <input id="f-city" name="city" autoComplete="address-level2" placeholder="Например, Казань" className="field min-h-11 py-2" aria-invalid={!!errors.city} aria-describedby="e-city" />
+            </Field>
+          )}
           <Field id="comment" label="Комментарий">
-            <input id="f-comment" name="comment" maxLength={1000} placeholder="крепёж, сроки" className="field min-h-11 py-2" />
+            <input id="f-comment" name="comment" maxLength={1000} placeholder={delivery === "delivery" ? "адрес, ПВЗ, сроки" : "когда удобно забрать"} className="field min-h-11 py-2" />
           </Field>
         </div>
         <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
@@ -250,15 +312,25 @@ export function CartClient() {
           </p>
         )}
 
-        <button type="submit" disabled={status.state === "sending"} className="btn btn-strap text-base disabled:opacity-60">
-          {status.state === "sending" ? (
-            <>
-              <Loader2 className="size-5 animate-spin" /> Отправляем
-            </>
-          ) : (
-            "Отправить заявку"
-          )}
-        </button>
+        {/* «Оплатить» — для размеров из каталога; свой размер сначала подтверждает менеджер */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="submit"
+            name="intent"
+            value="pay"
+            disabled={status.state === "sending" || hasCustom}
+            className="btn btn-strap px-3 text-base disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {status.state === "sending" && status.intent === "pay" ? <Loader2 className="size-5 animate-spin" /> : <CreditCard className="size-5" aria-hidden />}
+            Оплатить
+          </button>
+          <button type="submit" name="intent" value="lead" disabled={status.state === "sending"} className="btn btn-ghost px-3 text-base disabled:opacity-60">
+            {status.state === "sending" && status.intent === "lead" ? <Loader2 className="size-5 animate-spin" /> : <Send className="size-4" aria-hidden />}
+            <span className="sm:hidden">Заявка</span>
+            <span className="hidden sm:inline">Отправить заявку</span>
+          </button>
+        </div>
+        {hasCustom && <p className="-mt-1 text-xs text-ink-soft">Свой размер оплачивается после подтверждения цены менеджером — отправьте заявку.</p>}
       </form>
     </div>
   );

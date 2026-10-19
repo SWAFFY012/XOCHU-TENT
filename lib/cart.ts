@@ -45,3 +45,5 @@ export { useHydrated } from "./hooks";
 
 export const cartCount = (items: CartItem[]) => items.reduce((s, i) => s + i.qty, 0);
 export const cartTotal = (items: CartItem[]) => items.reduce((s, i) => s + i.price * i.qty, 0);
+/** Общий вес заказа, кг (у старых позиций корзины веса может не быть) */
+export const cartWeight = (items: CartItem[]) => Math.round(items.reduce((s, i) => s + (i.weight ?? 0) * i.qty, 0) * 10) / 10;

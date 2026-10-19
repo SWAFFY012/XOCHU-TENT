@@ -1,4 +1,5 @@
 // Собирает data/products.json из прайса Ozon (data/prices.xlsx).
+// Колонки: Продукт, Тип, Цвет, Размер, Цена без СПП, Вес, кг., Длина/Ширина/Высота, см. (упаковка).
 // Запуск: npm run data
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -69,13 +70,16 @@ for (const sheet of wb.SheetNames) {
     const [w, l] = size.split("х").map(num);
     const price = Math.round(Number(row["Цена без СПП"]));
     if (!w || !l || !price) continue;
+    // Вес и габариты упаковки — для расчёта доставки
+    const weight = Number(row["Вес, кг."]) || 0;
+    const box = [row["Длина, см."], row["Ширина, см."], row["Высота, см."]].map((x) => Number(x) || 0);
 
     if (!map.has(meta.slug)) map.set(meta.slug, { meta, variants: new Map() });
     const key = `${option}|${color}|${size}`;
     const prev = map.get(meta.slug).variants.get(key);
     // Дубли строк в прайсе: оставляем меньшую цену
     if (!prev || price < prev.price) {
-      map.get(meta.slug).variants.set(key, { option, color, size, area: Math.round(w * l * 100) / 100, price });
+      map.get(meta.slug).variants.set(key, { option, color, size, area: Math.round(w * l * 100) / 100, price, weight, box });
     }
   }
 }
@@ -95,6 +99,8 @@ const products = ORDER.filter((s) => map.has(s)).map((slug) => {
     options.map((o) => [o, Math.round(median(list.filter((v) => v.option === o).map((v) => v.price / v.area)))]),
   );
   const areas = list.map((v) => v.area);
+  // Вес 1 м² изделия: для оценки веса нестандартного размера
+  const kgPerM2 = Math.round(median(list.filter((v) => v.weight).map((v) => v.weight / v.area)) * 1000) / 1000;
   return {
     slug,
     title: meta.title,
@@ -106,6 +112,7 @@ const products = ORDER.filter((s) => map.has(s)).map((slug) => {
     priceTo: Math.max(...list.map((v) => v.price)),
     pricePerM2Median: Math.round(median(perM2)),
     pricePerM2ByOption,
+    kgPerM2,
     areaMin: Math.min(...areas),
     areaMax: Math.max(...areas),
     colors: [...new Set(list.map((v) => v.color))],

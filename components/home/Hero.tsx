@@ -83,7 +83,7 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
             Сезонные хиты к зиме: утеплённые шторы для гаражей и складов, ПВХ-тенты, брезентовые шторы.
             <br />
           </span>
-          Своё производство в Москве — шьём любые размеры за {site.productionDays}.
+          Своё производство под Петербургом — шьём любые размеры за {site.productionDays}.
         </p>
 
         <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-4 md:mt-7 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-6">

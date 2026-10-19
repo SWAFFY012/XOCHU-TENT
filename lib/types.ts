@@ -8,6 +8,10 @@ export type Variant = {
   size: string;
   area: number;
   price: number;
+  /** вес в упаковке, кг */
+  weight: number;
+  /** упаковка: длина, ширина, высота, см */
+  box: [number, number, number];
 };
 
 export type Product = {
@@ -21,6 +25,8 @@ export type Product = {
   priceTo: number;
   pricePerM2Median: number;
   pricePerM2ByOption: Record<string, number>;
+  /** средний вес 1 м² изделия, кг — для нестандартных размеров */
+  kgPerM2: number;
   areaMin: number;
   areaMax: number;
   colors: string[];
@@ -59,8 +65,10 @@ export type ClientMedia = {
 export type CompactVariants = {
   sizes: string[];
   areas: number[];
-  /** [optionIdx, colorIdx, sizeIdx, price] */
-  rows: [number, number, number, number][];
+  /** упаковки «Д×Ш×В» без повторов */
+  boxes: string[];
+  /** [optionIdx, colorIdx, sizeIdx, price, weightKg, boxIdx] */
+  rows: [number, number, number, number, number, number][];
 };
 
 export type CartItem = {
@@ -76,4 +84,8 @@ export type CartItem = {
   qty: number;
   custom: boolean;
   image?: string;
+  /** вес одной штуки, кг (у своего размера — оценка) */
+  weight?: number;
+  /** упаковка «Д×Ш×В» в см; у своего размера нет */
+  box?: string;
 };

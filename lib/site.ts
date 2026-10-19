@@ -14,12 +14,16 @@ export const site = {
   telegram: "https://t.me/hochutent", // TODO
   whatsapp: "https://wa.me/79000000000", // TODO
   ozon: "https://www.ozon.ru/seller/hochutent/",
-  city: "Москва", // TODO
-  address: "г. Москва, ул. Производственная, д. 1, стр. 2", // TODO: адрес цеха
-  addressNote: "Вход со двора, 2-й этаж. Самовывоз по договорённости.", // TODO
+  city: "Янино-1",
+  region: "Ленинградская область",
+  address: "Ленинградская обл., Всеволожский р-н, г.п. Янино-1, тер. Три Холма, вх. 3/1",
+  addressShort: "Янино-1, тер. Три Холма, вх. 3/1",
+  addressNote: "Самовывоз по договорённости: предупредите о приезде, подготовим заказ.",
   hours: "Пн–Пт 9:00–19:00, Сб 10:00–16:00", // TODO
-  // TODO: координаты цеха для карты (Яндекс Карты)
-  map: { lat: 55.751244, lon: 37.618423 },
+  // Точка «ХОЧУТЕНТ» в Яндекс Картах
+  map: { lat: 59.951195, lon: 30.580512 },
+  yandexOrgId: "181363525341",
+  yandexOrgUrl: "https://yandex.ru/maps/org/khochutent/181363525341/",
   yandexVerification: "", // TODO: код из Яндекс Вебмастера
   // Цифры с витрины Ozon (на 11.10.2026). Обновляйте вручную.
   ozonStats: { rating: "4,9", reviews: "5 246", orders: "13,1 тыс." },
@@ -28,7 +32,23 @@ export const site = {
   foundedYear: 2019, // TODO
   workshopArea: "600 м²", // TODO
   dailyOutput: "до 150 изделий в день", // TODO
+  // Онлайн-оплата: пока false — кнопка «Оплатить» отправляет заявку, менеджер присылает ссылку.
+  // Когда подключим эквайринг Ozon Банка, кнопка поведёт на платёжную форму.
+  onlinePayment: false,
 } as const;
+
+/** Способы получения заказа. Цены доставки пока считает менеджер; дальше — расчёт по API служб. */
+export const deliveryServices = [
+  { id: "cdek", title: "СДЭК", note: "пункт выдачи или курьер" },
+  { id: "post", title: "Почта России", note: "до отделения" },
+  { id: "ozon", title: "Ozon Логистика", note: "пункт выдачи Ozon" },
+  { id: "dellin", title: "Деловые Линии", note: "до терминала или двери" },
+  { id: "pek", title: "ПЭК", note: "до терминала или двери" },
+] as const;
+export type DeliveryServiceId = (typeof deliveryServices)[number]["id"];
+
+/** Маршрут до самовывоза в Яндекс Картах */
+export const routeUrl = `https://yandex.ru/maps/?rtext=~${site.map.lat}%2C${site.map.lon}&rtt=auto`;
 
 // Фото товаров: npm run images -- "<папка>" <slug>  (см. scripts/import-images.mjs)
 

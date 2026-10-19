@@ -7,10 +7,10 @@ import { ChevronDown } from "lucide-react";
 import { Check } from "lucide-react";
 import { PriceTicker } from "@/components/motion/PriceTicker";
 import { useCart } from "@/lib/cart";
-import { estimateCustom, formatPrice } from "@/lib/format";
+import { estimateCustom, estimateWeight, formatPrice } from "@/lib/format";
 import type { ProductSummary } from "@/lib/types";
 
-type Lite = Pick<ProductSummary, "slug" | "title" | "kind" | "colors" | "options" | "pricePerM2ByOption" | "pricePerM2Median">;
+type Lite = Pick<ProductSummary, "slug" | "title" | "kind" | "colors" | "options" | "pricePerM2ByOption" | "pricePerM2Median" | "kgPerM2">;
 
 /** Калькулятор нестандартного размера на главной. На телефоне компактный — целиком в один экран. */
 export function CustomCalc({ products }: { products: Lite[] }) {
@@ -70,6 +70,7 @@ export function CustomCalc({ products }: { products: Lite[] }) {
                   area,
                   price,
                   custom: true,
+                  weight: estimateWeight(area, p.kgPerM2),
                 });
                 setDone(true);
                 setTimeout(() => setDone(false), 2500);

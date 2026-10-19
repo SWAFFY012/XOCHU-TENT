@@ -31,7 +31,7 @@ function toSummary({ variants, ...p }: Product, rank: number): ProductSummary {
 /** Сжимает варианты товара для передачи в клиентский конфигуратор. */
 export function getCompactVariants(slug: string): CompactVariants {
   const p = getProduct(slug);
-  if (!p) return { sizes: [], areas: [], rows: [] };
+  if (!p) return { sizes: [], areas: [], boxes: [], rows: [] };
   const sizes: string[] = [];
   const areas: number[] = [];
   const sizeIdx = new Map<string, number>();
@@ -42,13 +42,21 @@ export function getCompactVariants(slug: string): CompactVariants {
       areas.push(v.area);
     }
   }
-  const rows = p.variants.map(
-    (v) => [p.options.indexOf(v.option), p.colors.indexOf(v.color), sizeIdx.get(v.size)!, v.price] as [number, number, number, number],
-  );
-  return { sizes, areas, rows };
+  const boxes: string[] = [];
+  const boxIdx = new Map<string, number>();
+  const rows = p.variants.map((v) => {
+    const b = v.box.join("×");
+    if (!boxIdx.has(b)) {
+      boxIdx.set(b, boxes.length);
+      boxes.push(b);
+    }
+    return [p.options.indexOf(v.option), p.colors.indexOf(v.color), sizeIdx.get(v.size)!, v.price, v.weight, boxIdx.get(b)!] as CompactVariants["rows"][number];
+  });
+  return { sizes, areas, boxes, rows };
 }
 
-/** Цена варианта для проверки заявки на сервере. */
-export function findVariantPrice(slug: string, option: string, color: string, size: string) {
-  return getProduct(slug)?.variants.find((v) => v.option === option && v.color === color && v.size === size)?.price;
+/** Вариант целиком (цена, вес, упаковка) для проверки заявки на сервере. */
+export function findVariant(slug: string, option: string, color: string, size: string) {
+  return getProduct(slug)?.variants.find((v) => v.option === option && v.color === color && v.size === size);
 }
+

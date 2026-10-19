@@ -3,12 +3,12 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Minus, Plus, Ruler, ShoppingBag } from "lucide-react";
+import { Check, Minus, Package, Plus, Ruler, ShoppingBag } from "lucide-react";
 import { clsx } from "clsx";
 import { PriceTicker } from "@/components/motion/PriceTicker";
 import { useCart } from "@/lib/cart";
 import { hexOf } from "@/lib/colors";
-import { estimateCustom, formatArea, formatPrice, parseSize } from "@/lib/format";
+import { estimateCustom, estimateWeight, formatArea, formatPrice, formatWeight, parseSize } from "@/lib/format";
 import { sizeLabels } from "@/lib/content";
 import type { CompactVariants, ProductSummary } from "@/lib/types";
 
@@ -44,12 +44,13 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
     return p.category === "fabric" && s.size === 1 ? [...s][0] : null;
   }, [dims, p.category]);
 
-  // Цены для текущих пропитки и цвета: sizeIdx -> price
-  const priceBySize = useMemo(() => {
-    const m = new Map<number, number>();
-    for (const [o, c, s, price] of data.rows) if (o === option && c === color) m.set(s, price);
+  // Варианты текущих пропитки и цвета: sizeIdx -> цена, вес и упаковка
+  const rowBySize = useMemo(() => {
+    const m = new Map<number, CompactVariants["rows"][number]>();
+    for (const r of data.rows) if (r[0] === option && r[1] === color) m.set(r[2], r);
     return m;
   }, [data.rows, option, color]);
+  const priceBySize = useMemo(() => new Map([...rowBySize].map(([s, r]) => [s, r[3]])), [rowBySize]);
 
   const available = useMemo(() => [...priceBySize.keys()].sort((a, b) => a - b), [priceBySize]);
   const widths = useMemo(() => [...new Set(available.map((s) => dims[s][0]))].sort((a, b) => a - b), [available, dims]);
@@ -90,6 +91,10 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
   const customPrice = customValid ? estimateCustom(customArea, perM2) : 0;
 
   const unitPrice = custom ? customPrice : (priceBySize.get(current) ?? 0);
+  const row = rowBySize.get(current);
+  // Вес и упаковка: из прайса, у своего размера — оценка по весу 1 м²
+  const unitWeight = custom ? (customValid ? estimateWeight(customArea, p.kgPerM2) : 0) : (row?.[4] ?? 0);
+  const box = !custom && row ? data.boxes[row[5]] : undefined;
   const total = unitPrice * qty;
 
   const handleAdd = () => {
@@ -107,6 +112,8 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
         price: unitPrice,
         custom,
         image,
+        weight: unitWeight || undefined,
+        box,
       },
       qty,
     );
@@ -271,6 +278,14 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
           </div>
         </div>
         {qty > 1 && unitPrice > 0 && <p className="mt-1 text-sm text-paper/60">{formatPrice(unitPrice)} за штуку</p>}
+        {unitWeight > 0 && (
+          <p className="mt-2 flex items-center gap-2 text-sm text-paper/70">
+            <Package className="size-4 shrink-0" aria-hidden />
+            {custom ? "≈ " : ""}
+            {formatWeight(unitWeight * qty)}
+            {box && ` · упаковка ${box} см`}
+          </p>
+        )}
 
         <button
           type="button"

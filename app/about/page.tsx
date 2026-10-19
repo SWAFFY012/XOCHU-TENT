@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Banknote, Building2, Clock3, CreditCard, Factory, PackageCheck, Ruler, Truck } from "lucide-react";
+import { Banknote, Building2, Clock3, CreditCard, Download, FileText, Factory, PackageCheck, Ruler, ShieldCheck, Truck } from "lucide-react";
 import { SectionReveal } from "@/components/motion/SectionReveal";
 import Image from "next/image";
-import { site } from "@/lib/site";
+import { deliveryServices, site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "О производстве, доставке и оплате",
   description:
-    "Собственный цех по пошиву тентов, штор для беседок и мягких окон. Как мы работаем, доставка по России, оплата после подтверждения заказа.",
+    "Собственный цех по пошиву тентов, штор и мягких окон в Янино-1 под Петербургом. Товарный знак «ХОЧУТЕНТ», самовывоз, доставка СДЭК, Почтой России, Ozon, Деловыми Линиями и ПЭК.",
   alternates: { canonical: "/about" },
 };
 
@@ -20,14 +20,21 @@ const FACTS = [
 ];
 
 const DELIVERY = [
-  { icon: Building2, t: "Самовывоз", d: `Из цеха: ${site.address}. Предупредите о приезде заранее.` },
-  { icon: Truck, t: "Транспортные компании", d: "СДЭК, Деловые Линии, ПЭК — до терминала или до двери. Стоимость по тарифу перевозчика." },
-  { icon: Truck, t: `Курьер по городу ${site.city}`, d: "На следующий день после готовности. Стоимость зависит от адреса." },
+  { icon: Building2, t: "Самовывоз — бесплатно", d: `С производства: ${site.address}. Предупредите о приезде заранее.` },
+  ...deliveryServices.map((s) => ({ icon: Truck, t: s.title, d: `Доставка по России: ${s.note}. Стоимость по тарифу службы, по весу и габаритам заказа.` })),
 ];
+
+// Свидетельство на товарный знак: файлы лежат в public/docs
+const TM = {
+  number: "1223955",
+  pdf: "/docs/svidetelstvo-tovarnyj-znak-1223955.pdf",
+  jpg: "/docs/svidetelstvo-tovarnyj-znak-1223955.jpg",
+  preview: "/docs/svidetelstvo-tovarnyj-znak-1223955.webp",
+};
 
 const PAYMENT = [
   { icon: Banknote, t: "По счёту", d: "Для юрлиц и ИП. Закрывающие документы отправим с заказом." },
-  { icon: CreditCard, t: "Картой или переводом", d: "Пришлём ссылку на оплату после подтверждения заказа менеджером." },
+  { icon: CreditCard, t: "Онлайн на сайте", d: "Соберите заказ в корзине, выберите самовывоз или доставку и нажмите «Оплатить». Пока подключаем онлайн-оплату, менеджер присылает ссылку." },
 ];
 
 export default function AboutPage() {
@@ -62,6 +69,59 @@ export default function AboutPage() {
         </div>
       </SectionReveal>
 
+      {/* товарный знак: свидетельство Роспатента */}
+      <section id="trademark" className="wrap scroll-mt-24 py-14">
+        <div className="grid items-center gap-8 rounded-[32px] bg-paper p-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:gap-12 md:p-10">
+          <a href={TM.jpg} target="_blank" rel="noopener" className="group relative mx-auto block w-full max-w-sm overflow-hidden rounded-2xl shadow-[0_18px_50px_-20px_rgba(0,0,0,.35)]">
+            <Image
+              src={TM.preview}
+              alt={`Свидетельство на товарный знак «ХОЧУТЕНТ» № ${TM.number}`}
+              width={900}
+              height={1273}
+              sizes="(min-width: 768px) 384px, 90vw"
+              className="h-auto w-full transition-transform duration-500 group-hover:scale-[1.02]"
+            />
+          </a>
+          <div>
+            <p className="flex items-center gap-2 font-semibold text-tarp">
+              <ShieldCheck className="size-5" aria-hidden /> Зарегистрированный бренд
+            </p>
+            <h2 className="mt-3 text-5xl md:text-7xl">Товарный знак «ХОЧУТЕНТ»</h2>
+            <p className="mt-5 max-w-[52ch] text-lg text-ink-soft">
+              Название «ХОЧУТЕНТ» — зарегистрированный товарный знак. Свидетельство № {TM.number} выдано Федеральной службой
+              по интеллектуальной собственности (Роспатент): знак внесён в Государственный реестр товарных знаков 26 мая 2026 года.
+              Изделия под этим именем шьём только мы.
+            </p>
+            <dl className="mt-6 grid max-w-lg grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              <div>
+                <dt className="text-ink-soft">Номер свидетельства</dt>
+                <dd className="font-semibold">№ {TM.number}</dd>
+              </div>
+              <div>
+                <dt className="text-ink-soft">Приоритет</dt>
+                <dd className="font-semibold">31 января 2025 г.</dd>
+              </div>
+              <div>
+                <dt className="text-ink-soft">Зарегистрирован</dt>
+                <dd className="font-semibold">26 мая 2026 г.</dd>
+              </div>
+              <div>
+                <dt className="text-ink-soft">Действует до</dt>
+                <dd className="font-semibold">31 января 2035 г.</dd>
+              </div>
+            </dl>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <a href={TM.pdf} target="_blank" rel="noopener" className="btn btn-ink min-h-12 px-5 text-base">
+                <FileText className="size-5" aria-hidden /> Свидетельство, PDF
+              </a>
+              <a href={TM.jpg} download className="btn btn-ghost min-h-12 px-5 text-base">
+                <Download className="size-5" aria-hidden /> Изображение, JPG
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <SectionReveal variant="seam" id="delivery" className="bg-tarp py-20 text-paper">
         <div className="wrap grid gap-12 lg:grid-cols-2">
           <div>
@@ -81,7 +141,7 @@ export default function AboutPage() {
           <div id="payment">
             <h2 className="text-5xl md:text-7xl">Оплата</h2>
             <p className="mt-4 max-w-[46ch] text-paper/75">
-              Оставьте заявку — согласуем детали заказа и выставим счёт.
+              Оплатите заказ на сайте или оставьте заявку — согласуем детали и выставим счёт.
             </p>
             <ul className="mt-6 flex flex-col gap-6">
               {PAYMENT.map(({ icon: Icon, t, d }) => (

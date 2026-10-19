@@ -102,7 +102,7 @@ export default function Home() {
           <CustomCalc
             products={all
               .filter((p) => p.category !== "fabric")
-              .map(({ slug, title, kind, colors, options, pricePerM2ByOption, pricePerM2Median }) => ({
+              .map(({ slug, title, kind, colors, options, pricePerM2ByOption, pricePerM2Median, kgPerM2 }) => ({
                 slug,
                 title,
                 kind,
@@ -110,6 +110,7 @@ export default function Home() {
                 options,
                 pricePerM2ByOption,
                 pricePerM2Median,
+                kgPerM2,
               }))}
           />
         </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { findVariantPrice, getSummary } from "@/lib/catalog";
-import { estimateCustom, formatPrice, formatSize } from "@/lib/format";
+import { findVariant, getSummary } from "@/lib/catalog";
+import { estimateCustom, estimateWeight, formatPrice, formatSize, formatWeight } from "@/lib/format";
+import { deliveryServices, site } from "@/lib/site";
 
 type InItem = { slug: string; option: string; color: string; size: string; qty: number; custom: boolean };
 type Body = {
@@ -10,6 +11,9 @@ type Body = {
   comment?: string;
   contact?: string;
   telegram?: string;
+  delivery?: string;
+  service?: string;
+  intent?: string;
   website?: string;
   consent: boolean;
   items: InItem[];
@@ -59,6 +63,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Проверьте ник в Telegram." }, { status: 400 });
   }
   const telegram = body.contact === "telegram" && tgMatch ? "@" + tgMatch[1] : "";
+  // Получение: самовывоз или доставка одной из служб (только из списка)
+  const delivery = body.delivery === "delivery" ? "delivery" : "pickup";
+  const service = deliveryServices.find((d) => d.id === body.service);
+  const city = clip(body.city, 80);
+  if (delivery === "delivery" && (!service || city.length < 2)) {
+    return NextResponse.json({ error: "Выберите службу доставки и город." }, { status: 400 });
+  }
+  const wantsPay = body.intent === "pay";
   if (!Array.isArray(body.items) || !body.items.length || body.items.length > 50) {
     return NextResponse.json({ error: "Заявка пустая." }, { status: 400 });
   }
@@ -66,6 +78,7 @@ export async function POST(req: Request) {
   // Цены пересчитываем на сервере по прайсу, а не берём из браузера
   const lines: string[] = [];
   let total = 0;
+  let weight = 0;
   let approx = false;
   for (const [n, it] of body.items.entries()) {
     const p = getSummary(clip(it.slug, 60));
@@ -75,37 +88,49 @@ export async function POST(req: Request) {
     }
     const size = clip(it.size, 20);
     let price: number | undefined;
+    let unitWeight = 0;
+    let box = "";
     if (it.custom) {
       const [w, l] = size.split("х").map(num);
       if (!(w >= 0.5 && l >= 0.5 && w <= 30 && l <= 50)) {
         return NextResponse.json({ error: "Проверьте нестандартный размер." }, { status: 400 });
       }
-      price = estimateCustom(Math.round(w * l * 100) / 100, p.pricePerM2ByOption[it.option] ?? p.pricePerM2Median);
+      const area = Math.round(w * l * 100) / 100;
+      price = estimateCustom(area, p.pricePerM2ByOption[it.option] ?? p.pricePerM2Median);
+      unitWeight = estimateWeight(area, p.kgPerM2);
       approx = true;
     } else {
-      price = findVariantPrice(p.slug, it.option, it.color, size);
+      const v = findVariant(p.slug, it.option, it.color, size);
+      price = v?.price;
+      unitWeight = v?.weight ?? 0;
+      box = v ? v.box.join("×") : "";
     }
     if (!price) return NextResponse.json({ error: "Цена одного из размеров изменилась. Обновите страницу." }, { status: 400 });
     total += price * qty;
+    weight += unitWeight * qty;
     const opt = it.option !== "Стандарт" ? `, ${esc(it.option)}` : "";
     lines.push(
-      `${n + 1}. <b>${esc(p.title)}</b>\n   ${esc(formatSize(size))}${it.custom ? " (свой размер, ≈)" : ""}, ${esc(it.color)}${opt}\n   ${qty} шт × ${formatPrice(price)} = <b>${formatPrice(price * qty)}</b>`,
+      `${n + 1}. <b>${esc(p.title)}</b>\n   ${esc(formatSize(size))}${it.custom ? " (свой размер, ≈)" : ""}, ${esc(it.color)}${opt}\n   ${qty} шт × ${formatPrice(price)} = <b>${formatPrice(price * qty)}</b>${unitWeight ? `\n   ${it.custom ? "≈ " : ""}${formatWeight(unitWeight)}/шт${box ? `, упаковка ${box} см` : ""}` : ""}`,
     );
   }
 
   const id = Date.now().toString(36).slice(-6).toUpperCase();
   const text = [
-    `🧵 <b>Заявка №${id}</b> с сайта`,
+    wantsPay ? `💳 <b>Заказ №${id}</b> с сайта — хочет оплатить онлайн` : `🧵 <b>Заявка №${id}</b> с сайта`,
     "",
     `👤 ${esc(name)}`,
     `📞 ${esc(phone)} — предпочитает ${CONTACT[body.contact ?? "phone"] ?? "звонок"}`,
     telegram ? `✈️ Telegram: ${esc(telegram)}` : "",
-    body.city ? `📍 ${esc(clip(body.city, 80))}` : "",
+    delivery === "pickup"
+      ? `🏭 Самовывоз: ${esc(site.addressShort)}`
+      : `🚚 Доставка: ${esc(service!.title)}, ${esc(city)}`,
     body.comment ? `💬 ${esc(clip(body.comment, 1000))}` : "",
     "",
     ...lines,
     "",
     `Итого: <b>${formatPrice(total)}</b>${approx ? " (есть ориентировочные позиции)" : ""}`,
+    weight ? `⚖️ Вес заказа ≈ ${formatWeight(Math.round(weight * 10) / 10)}` : "",
+    wantsPay ? "Онлайн-оплата пока не подключена — отправьте клиенту ссылку на оплату." : "",
   ]
     .filter((l, i, a) => l !== "" || a[i - 1] !== "")
     .join("\n");

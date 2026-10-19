@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Clock3, Mail, MapPin, MessageCircle, Phone, Send } from "lucide-react";
-import { site } from "@/lib/site";
+import Link from "next/link";
+import { Clock3, CreditCard, Mail, MapPin, MessageCircle, Navigation, Phone, Send, Truck, Warehouse } from "lucide-react";
+import { deliveryServices, routeUrl, site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Контакты",
-  description: `Телефон, адрес цеха и мессенджеры «Хочу Тент». ${site.hours}.`,
+  description: `Телефон, адрес производства в Янино-1 (Ленинградская область), самовывоз и доставка «Хочу Тент». ${site.hours}.`,
   alternates: { canonical: "/contacts" },
 };
 
@@ -17,7 +18,8 @@ export default function ContactsPage() {
     telephone: site.phone,
     email: site.email,
     url: site.url,
-    address: { "@type": "PostalAddress", streetAddress: site.address, addressLocality: site.city, addressCountry: "RU" },
+    address: { "@type": "PostalAddress", streetAddress: site.address, addressLocality: site.city, addressRegion: site.region, addressCountry: "RU" },
+    hasMap: site.yandexOrgUrl,
     geo: { "@type": "GeoCoordinates", latitude: lat, longitude: lon },
     openingHours: site.hours,
   };
@@ -58,6 +60,14 @@ export default function ContactsPage() {
               <div>
                 <p className="font-semibold">{site.address}</p>
                 <p className="mt-1 text-ink-soft">{site.addressNote}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <a href={routeUrl} target="_blank" rel="noopener" className="btn btn-ink min-h-11 px-4 text-sm">
+                    <Navigation className="size-4" aria-hidden /> Построить маршрут
+                  </a>
+                  <a href={site.yandexOrgUrl} target="_blank" rel="noopener" className="btn btn-ghost min-h-11 px-4 text-sm">
+                    Открыть в Яндекс Картах
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -70,14 +80,53 @@ export default function ContactsPage() {
         </div>
 
         <div className="min-h-[24rem] overflow-hidden rounded-[28px] bg-paper">
+          {/* карточка организации «ХОЧУТЕНТ» из Яндекс Карт: отзывы, маршрут, часы работы */}
           <iframe
-            title="Цех «Хочу Тент» на карте"
-            src={`https://yandex.ru/map-widget/v1/?ll=${lon}%2C${lat}&z=15&pt=${lon}%2C${lat}%2Cpm2rdm`}
+            title="«Хочу Тент» на Яндекс Картах"
+            src={`https://yandex.ru/map-widget/v1/?ll=${lon}%2C${lat}&mode=search&oid=${site.yandexOrgId}&ol=biz&z=15`}
             className="h-full min-h-[24rem] w-full border-0"
             loading="lazy"
+            allowFullScreen
           />
         </div>
       </div>
+
+      {/* как получить заказ: самовывоз, доставка, оплата */}
+      <section id="delivery" className="mt-16 scroll-mt-24">
+        <h2 className="text-[2.8rem] md:text-6xl">Получение и оплата</h2>
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          <div className="flex flex-col rounded-[28px] bg-paper p-6">
+            <Warehouse className="size-7 text-tarp" aria-hidden />
+            <h3 className="mt-4 text-[2rem]">Самовывоз</h3>
+            <p className="mt-1 font-semibold">Бесплатно</p>
+            <p className="mt-2 text-ink-soft">{site.address}. {site.addressNote}</p>
+            <a href={routeUrl} target="_blank" rel="noopener" className="btn btn-ghost mt-auto min-h-12 w-fit px-5 text-base max-lg:mt-5 lg:mt-6">
+              <Navigation className="size-4" aria-hidden /> Маршрут
+            </a>
+          </div>
+          <div className="flex flex-col rounded-[28px] bg-paper p-6">
+            <Truck className="size-7 text-tarp" aria-hidden />
+            <h3 className="mt-4 text-[2rem]">Доставка по России</h3>
+            <ul className="mt-3 flex flex-col gap-2">
+              {deliveryServices.map((d) => (
+                <li key={d.id} className="flex items-baseline justify-between gap-3 border-b border-line pb-2 last:border-0">
+                  <span className="font-semibold">{d.title}</span>
+                  <span className="text-right text-sm text-ink-soft">{d.note}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-sm text-ink-soft">Стоимость — по тарифу службы, считаем по весу и габаритам заказа.</p>
+          </div>
+          <div className="flex flex-col rounded-[28px] bg-tarp p-6 text-paper">
+            <CreditCard className="size-7 text-strap" aria-hidden />
+            <h3 className="mt-4 text-[2rem]">Оплата</h3>
+            <p className="mt-2 text-paper/75">Соберите заказ в корзине, выберите самовывоз или доставку и нажмите «Оплатить». Для юрлиц и ИП — оплата по счёту.</p>
+            <Link href="/cart" className="btn btn-strap mt-auto min-h-12 w-fit px-6 text-base max-lg:mt-5 lg:mt-6">
+              Оформить и оплатить
+            </Link>
+          </div>
+        </div>
+      </section>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
     </div>
   );
