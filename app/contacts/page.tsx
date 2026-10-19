@@ -75,7 +75,7 @@ export default function ContactsPage() {
           <dl className="text-sm text-ink-soft">
             <dt className="sr-only">Реквизиты</dt>
             <dd>{site.legalName}</dd>
-            <dd>ИНН {site.inn}, ОГРН {site.ogrn}</dd>
+            <dd>ИНН {site.inn}, ОГРНИП {site.ogrn}</dd>
           </dl>
         </div>
 

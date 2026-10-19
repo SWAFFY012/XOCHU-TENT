@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <section>
           <h2>1. Кто обрабатывает данные</h2>
           <p className="mt-3">
-            Оператор персональных данных — {site.legalName} (ИНН {site.inn}, ОГРН {site.ogrn}), адрес: {site.address}. Политика
+            Оператор персональных данных — {site.legalName} (ИНН {site.inn}, ОГРНИП {site.ogrn}), адрес: {site.address}. Политика
             действует для сайта {site.url} и составлена по Федеральному закону № 152-ФЗ «О персональных данных».
           </p>
         </section>

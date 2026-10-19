@@ -53,7 +53,7 @@ export function Footer() {
       </div>
 
       <div className="wrap flex flex-col gap-2 border-t border-paper/10 py-6 text-xs text-paper/50 md:flex-row md:justify-between">
-        <span>© <Year /> {site.legalName}. ИНН {site.inn}, ОГРН {site.ogrn}</span>
+        <span>© <Year /> {site.legalName}. ИНН {site.inn}, ОГРНИП {site.ogrn}</span>
         <span>Цены на сайте не являются публичной офертой. Итоговую стоимость подтверждает менеджер.</span>
       </div>
 

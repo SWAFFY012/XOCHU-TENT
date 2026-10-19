@@ -4,9 +4,9 @@
 
 export const site = {
   name: "Хочу Тент",
-  legalName: "ИП Иванов Иван Иванович", // TODO: юрлицо или ИП
-  inn: "000000000000", // TODO
-  ogrn: "000000000000000", // TODO
+  legalName: "ИП Аракелов Артур Азатович",
+  inn: "236701853098",
+  ogrn: "324237500372978",
   url: "https://hochutent.ru", // TODO: боевой домен (для canonical, sitemap, OG)
   phone: "+7 (988) 418-68-86",
   phoneHref: "tel:+79884186886",
