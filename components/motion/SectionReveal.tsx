@@ -33,7 +33,7 @@ export function SectionReveal({ children, variant = "curtain", className, id, as
   const Tag = as === "div" ? motion.div : motion.section;
 
   return (
-    <Tag ref={ref as never} id={id} className={className} style={reduce || plain ? undefined : style}>
+    <Tag ref={ref as never} id={id} className={className} style={reduce || plain ? STILL : style}>
       {children}
     </Tag>
   );
@@ -67,3 +67,7 @@ function useVariantStyle(variant: RevealVariant, p: MotionValue<number>) {
 }
 
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+
+// При гидрации медиазапрос ещё «ложь», и анимация успевает выставить clip-path.
+// Если потом просто убрать style, framer-motion оставит последнее значение, поэтому сбрасываем явно.
+const STILL = { clipPath: "none", y: 0, rotate: 0, scale: 1 };
