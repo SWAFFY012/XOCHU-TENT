@@ -58,7 +58,7 @@ jobs:
           mkdir -p restart
           date -u +%FT%TZ > restart/restart.txt
 
-      - name: Upload app via FTP
+      - name: Upload app via FTP (код)
         if: env.FTP_PASSWORD != '' && env.APP_DIR != ''
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -67,10 +67,13 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./.next/standalone/
           server-dir: ${{ vars.HOSTLAND_APP_DIR }}
+          # сервер отвечает медленно: на создание папки уходит несколько секунд
+          timeout: 300000
           # по умолчанию действие пропускает node_modules, а standalone без них не запустится
           exclude: |
             **/.git*
             **/.git*/**
+            public/products/**
 
       - name: Restart Passenger
         if: env.FTP_PASSWORD != '' && env.APP_DIR != ''
@@ -82,6 +85,19 @@ jobs:
           local-dir: ./restart/
           server-dir: ${{ vars.HOSTLAND_APP_DIR }}tmp/
           state-name: .ftp-deploy-restart.json
+
+      - name: Upload product photos via FTP
+        if: env.FTP_PASSWORD != '' && env.APP_DIR != ''
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./.next/standalone/public/products/
+          server-dir: ${{ vars.HOSTLAND_APP_DIR }}public/products/
+          # сервер отвечает медленно: на создание папки уходит несколько секунд
+          timeout: 300000
+          state-name: .ftp-deploy-products.json
 
       - name: Settings missing
         if: env.FTP_PASSWORD == '' || env.APP_DIR == ''
