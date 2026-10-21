@@ -6,11 +6,17 @@
 
 ## 1. Приложение в панели Hostland
 
-«Сайты» → домен `хочу-тент.рф` → Node.js-приложение:
+Аккаунт Hostland `host1890550` (не путать с аккаунтом «Сириуса»).
+«Сайты» → `хочу-тент.рф` → Nodejs:
 
-- **стартовый файл — `server.js`**;
-- версия Node.js — 20.9 или новее (лучше 22);
-- запомните каталог приложения: путь вида `/home/hostXXXXXXX/xn----jtbybvccot.xn--p1ai/projects/<имя>`.
+- каталог приложения — `/home/host1890550/xn----jtbybvccot.xn--p1ai/projects/xochu-tent`;
+- Node.js v24.11.1, стартовый файл — `server.js`.
+
+`server.js` — обёртка из `hostland/server.js`: перенаправляет http на https и отдаёт файлы
+проверки Let's Encrypt из `htdocs/www/.well-known` (без этого не продлится SSL).
+Сам сервер Next она подключает как `next-server.js`.
+В окне настроек Nodejs в панели не нажимайте «Сохранить» с включённым
+«Перезаписать каталог приложения» — это удалит сайт.
 
 Переменные окружения (если панель их позволяет) или файл `.env` в каталоге приложения:
 
@@ -26,22 +32,22 @@ TELEGRAM_CHAT_ID=...
 
 Settings → Secrets and variables → Actions:
 
-**Secrets** (те же FTP-доступы Hostland, что и у «Сириуса»):
+**Secrets:**
 
-- `FTP_SERVER`
-- `FTP_USERNAME`
-- `FTP_PASSWORD`
+- `FTP_SERVER` — `185.26.122.11`;
+- `FTP_USERNAME` — `host1890550` (FTP-аккаунт из «Файлы | FTP», корень — домашний каталог);
+- `FTP_PASSWORD` — пароль этого FTP-аккаунта.
 
 **Variables:**
 
-- `HOSTLAND_APP_DIR` — каталог приложения от корня FTP, со слешем в конце,
-  например `./xn----jtbybvccot.xn--p1ai/projects/<имя>/`.
+- `HOSTLAND_APP_DIR` — каталог приложения от корня FTP, со слешем в конце:
+  `./xn----jtbybvccot.xn--p1ai/projects/xochu-tent/`.
 
 Пока секреты или переменная не заданы, сборка проходит, а выгрузка пропускается с предупреждением.
 
 ## 3. Что выгружается
 
-Папка `.next/standalone`: `server.js`, урезанный `node_modules`, `.next`, `public` (фото товаров)
+Папка `.next/standalone`: обёртка `server.js`, `next-server.js`, урезанный `node_modules`, `.next`, `public` (фото товаров)
 и `data/media`. Первая выгрузка долгая — около 600 МБ картинок, дальше уходят только изменения.
 
 ## 4. Проверка

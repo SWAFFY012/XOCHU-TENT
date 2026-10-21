@@ -4,10 +4,10 @@
 # Нужны:
 #   секреты репозитория  FTP_SERVER, FTP_USERNAME, FTP_PASSWORD;
 #   переменная репозитория HOSTLAND_APP_DIR — каталог приложения от корня FTP,
-#   например ./xn----jtbybvccot.xn--p1ai/projects/app/ (со слешем в конце).
+#   сейчас ./xn----jtbybvccot.xn--p1ai/projects/xochu-tent/ (со слешем в конце).
 # В панели Hostland стартовый файл приложения — server.js.
 #
-# Выгружается собранная папка .next/standalone (server.js, node_modules, .next, public, data).
+# Выгружается собранная папка .next/standalone (server.js, next-server.js, node_modules, .next, public, data).
 # Файлы, которых нет в сборке (.env с токеном Telegram, логи), на сервере не трогаются:
 # действие удаляет только то, что само загрузило раньше.
 # Последним шагом обновляется tmp/restart.txt — Passenger перезапускает приложение.
@@ -49,6 +49,10 @@ jobs:
           # манифесты картинок читаются с диска — кладём явно, даже если трассировка их пропустит
           mkdir -p .next/standalone/data/media
           cp -r data/media/. .next/standalone/data/media/
+          # на Hostland стартует обёртка hostland/server.js (https и продление SSL),
+          # а сам сервер Next она подключает как next-server.js
+          mv .next/standalone/server.js .next/standalone/next-server.js
+          cp hostland/server.js .next/standalone/server.js
           # какой коммит сейчас на сайте: https://хочу-тент.рф/version.txt
           echo "${GITHUB_SHA::7} $(date -u +%FT%TZ)" > .next/standalone/public/version.txt
           mkdir -p restart
