@@ -1,0 +1,84 @@
+# Автодеплой на Hostland: при каждом изменении в main сайт собирается
+# (Next.js, output: "standalone") и по FTP выгружается в каталог Node.js-приложения.
+#
+# Нужны:
+#   секреты репозитория  FTP_SERVER, FTP_USERNAME, FTP_PASSWORD;
+#   переменная репозитория HOSTLAND_APP_DIR — каталог приложения от корня FTP,
+#   например ./xn----jtbybvccot.xn--p1ai/projects/app/ (со слешем в конце).
+# В панели Hostland стартовый файл приложения — server.js.
+#
+# Выгружается собранная папка .next/standalone (server.js, node_modules, .next, public, data).
+# Файлы, которых нет в сборке (.env с токеном Telegram, логи), на сервере не трогаются:
+# действие удаляет только то, что само загрузило раньше.
+# Последним шагом обновляется tmp/restart.txt — Passenger перезапускает приложение.
+
+name: Deploy to Hostland
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hostland
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      APP_DIR: ${{ vars.HOSTLAND_APP_DIR }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      # standalone не копирует статику: кладём public и .next/static рядом с server.js
+      - name: Assemble standalone
+        run: |
+          cp -r public .next/standalone/
+          cp -r .next/static .next/standalone/.next/
+          # манифесты картинок читаются с диска — кладём явно, даже если трассировка их пропустит
+          mkdir -p .next/standalone/data/media
+          cp -r data/media/. .next/standalone/data/media/
+          # какой коммит сейчас на сайте: https://хочу-тент.рф/version.txt
+          echo "${GITHUB_SHA::7} $(date -u +%FT%TZ)" > .next/standalone/public/version.txt
+          mkdir -p restart
+          date -u +%FT%TZ > restart/restart.txt
+
+      - name: Upload app via FTP
+        if: env.FTP_PASSWORD != '' && env.APP_DIR != ''
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./.next/standalone/
+          server-dir: ${{ vars.HOSTLAND_APP_DIR }}
+          # по умолчанию действие пропускает node_modules, а standalone без них не запустится
+          exclude: |
+            **/.git*
+            **/.git*/**
+
+      - name: Restart Passenger
+        if: env.FTP_PASSWORD != '' && env.APP_DIR != ''
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./restart/
+          server-dir: ${{ vars.HOSTLAND_APP_DIR }}tmp/
+          state-name: .ftp-deploy-restart.json
+
+      - name: Settings missing
+        if: env.FTP_PASSWORD == '' || env.APP_DIR == ''
+        run: echo "::warning::FTP-секреты или HOSTLAND_APP_DIR не заданы — сборка прошла, выгрузка пропущена."
