@@ -39,7 +39,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+      # NEXT_PUBLIC_* вшиваются в код при сборке, поэтому задаются переменными репозитория,
+      # а не в .env на сервере. Пустые значения — берутся значения по умолчанию из lib/site.ts.
       - run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_PAYMENTS_ENABLED: ${{ vars.NEXT_PUBLIC_PAYMENTS_ENABLED }}
 
       # standalone не копирует статику: кладём public и .next/static рядом с server.js
       - name: Assemble standalone

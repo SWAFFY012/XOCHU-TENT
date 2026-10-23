@@ -8,8 +8,9 @@ import { clsx } from "clsx";
 import { PriceTicker } from "@/components/motion/PriceTicker";
 import { useCart } from "@/lib/cart";
 import { hexOf } from "@/lib/colors";
-import { estimateCustom, estimateWeight, formatArea, formatPrice, formatWeight, parseSize } from "@/lib/format";
+import { priceCustom, estimateWeight, formatArea, formatPrice, formatWeight, parseSize } from "@/lib/format";
 import { sizeLabels } from "@/lib/content";
+import { customQuoteOnly } from "@/lib/site";
 import type { CompactVariants, ProductSummary } from "@/lib/types";
 
 export type Selection = { option: string; size: string; custom: boolean };
@@ -21,7 +22,7 @@ type Props = {
   onColor: (i: number) => void;
   /** Сообщает выбор наверх, чтобы сменить фото под пропитку и размер */
   onSelect?: (s: Selection) => void;
-  /** Текущее фото — сохраняется в заявке */
+  /** Текущее фото — сохраняется в корзине */
   image?: string;
 };
 
@@ -88,7 +89,9 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
   const l = Number(cl.replace(",", "."));
   const customValid = w >= 0.5 && l >= 0.5 && w <= 30 && l <= 50;
   const customArea = customValid ? Math.round(w * l * 100) / 100 : 0;
-  const customPrice = customValid ? estimateCustom(customArea, perM2) : 0;
+  const customPrice = customValid ? priceCustom(customArea, perM2) : 0;
+  // Свой размер у некоторых изделий оплачивается после расчёта менеджером
+  const quoteOnly = customQuoteOnly.includes(p.slug);
 
   const unitPrice = custom ? customPrice : (priceBySize.get(current) ?? 0);
   const row = rowBySize.get(current);
@@ -111,6 +114,7 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
         area: custom ? customArea : data.areas[current],
         price: unitPrice,
         custom,
+        quote: custom && quoteOnly,
         image,
         weight: unitWeight || undefined,
         box,
@@ -236,7 +240,7 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
               <NumField label={rollWidth ? "Ширина, м" : `${secondLabel}, м`} value={cl} onChange={setCl} />
             </div>
             <p className="mt-3 text-sm text-ink-soft">
-              Считаем по медианной цене {formatPrice(perM2)} за м²
+              {quoteOnly ? "Предварительно" : "Итоговая цена"}: {formatPrice(perM2)} за м²
               {p.options.length > 1 ? ` для пропитки «${p.options[option]}»` : ""}. От 0,5 до 30 × 50 м.
             </p>
             {(cw || cl) && !customValid && (
@@ -262,7 +266,7 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
             </div>
             <div className="mt-1 flex items-baseline gap-2">
               <PriceTicker value={total} className="font-display text-5xl leading-none font-extrabold" />
-              {custom && <span className="rounded-md bg-strap px-1.5 py-0.5 text-xs font-semibold text-ink">ориентировочно</span>}
+              {custom && <span className="rounded-md bg-strap px-1.5 py-0.5 text-xs font-semibold text-ink">{quoteOnly ? "цену подтвердит менеджер" : "свой размер"}</span>}
             </div>
           </div>
           <div className="flex items-center rounded-full bg-paper/10">
@@ -296,11 +300,11 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
           <AnimatePresence mode="wait" initial={false}>
             {added ? (
               <motion.span key="ok" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -10, opacity: 0 }} className="flex items-center gap-2">
-                <Check className="size-5" /> Добавлено в заявку
+                <Check className="size-5" /> В корзине
               </motion.span>
             ) : (
               <motion.span key="add" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -10, opacity: 0 }} className="flex items-center gap-2">
-                <ShoppingBag className="size-5" /> Добавить в заявку
+                <ShoppingBag className="size-5" /> В корзину
               </motion.span>
             )}
           </AnimatePresence>
@@ -309,7 +313,7 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
           {added && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
               <Link href="/cart" className="mt-3 block text-center text-sm font-semibold text-strap underline underline-offset-4">
-                Перейти к оформлению заявки
+                Перейти к оформлению заказа
               </Link>
             </motion.div>
           )}

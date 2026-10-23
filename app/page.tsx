@@ -191,7 +191,7 @@ export default function Home() {
           <div>
             <SplitReveal text={`Пришлите размеры — посчитаем за ${site.responseTime}`} className="max-w-[19ch] text-[clamp(4rem,10vw,12rem)] leading-[0.95]" />
             <p className="mt-6 max-w-[46ch] text-xl md:text-2xl">
-              Напишите в Telegram, позвоните или соберите заявку в каталоге.
+              Напишите в Telegram, позвоните или оформите заказ в каталоге.
             </p>
             <div className="mt-9 flex flex-wrap gap-4">
               <a href={site.telegram} target="_blank" rel="noopener" className="btn btn-ink min-h-16 px-7 text-lg md:min-h-20 md:px-10 md:text-2xl">

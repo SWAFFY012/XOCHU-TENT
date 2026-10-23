@@ -83,6 +83,8 @@ export type CartItem = {
   price: number;
   qty: number;
   custom: boolean;
+  /** свой размер, цену которого подтверждает менеджер: онлайн не оплачивается */
+  quote?: boolean;
   image?: string;
   /** вес одной штуки, кг (у своего размера — оценка) */
   weight?: number;

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Обёртка сервера для Hostland — CommonJS, запускается Passenger без сборки
+    "hostland/**",
   ]),
 ]);
 

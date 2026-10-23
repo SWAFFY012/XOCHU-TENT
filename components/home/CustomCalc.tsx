@@ -7,7 +7,8 @@ import { ChevronDown } from "lucide-react";
 import { Check } from "lucide-react";
 import { PriceTicker } from "@/components/motion/PriceTicker";
 import { useCart } from "@/lib/cart";
-import { estimateCustom, estimateWeight, formatPrice } from "@/lib/format";
+import { priceCustom, estimateWeight, formatPrice } from "@/lib/format";
+import { customQuoteOnly } from "@/lib/site";
 import type { ProductSummary } from "@/lib/types";
 
 type Lite = Pick<ProductSummary, "slug" | "title" | "kind" | "colors" | "options" | "pricePerM2ByOption" | "pricePerM2Median" | "kgPerM2">;
@@ -23,7 +24,7 @@ export function CustomCalc({ products }: { products: Lite[] }) {
   const p = products.find((x) => x.slug === slug)!;
   const perM2 = p.pricePerM2ByOption[p.options[0]] ?? p.pricePerM2Median;
   const area = Math.round(w * l * 100) / 100;
-  const price = estimateCustom(area, perM2);
+  const price = priceCustom(area, perM2);
   const fmt = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
 
   return (
@@ -52,9 +53,9 @@ export function CustomCalc({ products }: { products: Lite[] }) {
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <PriceTicker value={price} className="font-display text-[2.8rem] leading-none font-extrabold text-strap md:text-[clamp(3.5rem,5vw,6rem)]" />
-            <span className="rounded-md bg-paper/15 px-1.5 py-0.5 text-xs font-semibold">ориентировочно</span>
+            {customQuoteOnly.includes(p.slug) && <span className="rounded-md bg-paper/15 px-1.5 py-0.5 text-xs font-semibold">цену подтвердит менеджер</span>}
           </div>
-          <p className="mt-2 text-sm text-paper/75 md:mt-4 md:text-xl [@media(max-height:700px)]:hidden">Точную цену назовёт менеджер: она зависит от крепежа и цвета.</p>
+          <p className="mt-2 text-sm text-paper/75 md:mt-4 md:text-xl [@media(max-height:700px)]:hidden">Цена итоговая: по площади изделия. Шьём за 1–3 рабочих дня.</p>
           <div className="mt-3 flex gap-2 md:mt-4 md:flex-wrap">
             <button
               type="button"
@@ -70,6 +71,7 @@ export function CustomCalc({ products }: { products: Lite[] }) {
                   area,
                   price,
                   custom: true,
+                  quote: customQuoteOnly.includes(p.slug),
                   weight: estimateWeight(area, p.kgPerM2),
                 });
                 setDone(true);
@@ -78,12 +80,12 @@ export function CustomCalc({ products }: { products: Lite[] }) {
             >
               {done ? (
                 <>
-                  <Check className="size-5" /> В заявке
+                  <Check className="size-5" /> В корзине
                 </>
               ) : (
                 <>
-                  <span className="md:hidden">В заявку</span>
-                  <span className="hidden md:inline">Добавить в заявку</span>
+                  <span className="md:hidden">В корзину</span>
+                  <span className="hidden md:inline">Добавить в корзину</span>
                 </>
               )}
             </button>

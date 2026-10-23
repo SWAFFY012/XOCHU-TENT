@@ -34,7 +34,7 @@ const TM = {
 
 const PAYMENT = [
   { icon: Banknote, t: "По счёту", d: "Для юрлиц и ИП. Закрывающие документы отправим с заказом." },
-  { icon: CreditCard, t: "Онлайн на сайте", d: "Соберите заказ в корзине, выберите самовывоз или доставку и нажмите «Оплатить». Пока подключаем онлайн-оплату, менеджер присылает ссылку." },
+  { icon: CreditCard, t: "Онлайн на сайте", d: "Картой МИР, Visa, Mastercard или через СБП при оформлении заказа в корзине. Платёж принимает Ozon Pay, чек придёт на почту." },
 ];
 
 export default function AboutPage() {
@@ -141,7 +141,7 @@ export default function AboutPage() {
           <div id="payment">
             <h2 className="text-5xl md:text-7xl">Оплата</h2>
             <p className="mt-4 max-w-[46ch] text-paper/75">
-              Оплатите заказ на сайте или оставьте заявку — согласуем детали и выставим счёт.
+              Оплачивайте заказ на сайте или по счёту. Подробно — на странице <Link href="/delivery" className="text-strap underline underline-offset-2">«Доставка и оплата»</Link>.
             </p>
             <ul className="mt-6 flex flex-col gap-6">
               {PAYMENT.map(({ icon: Icon, t, d }) => (

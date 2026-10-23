@@ -18,15 +18,21 @@
 В окне настроек Nodejs в панели не нажимайте «Сохранить» с включённым
 «Перезаписать каталог приложения» — это удалит сайт.
 
-Переменные окружения (если панель их позволяет) или файл `.env` в каталоге приложения:
+Секреты сервера — файл `.env` в каталоге приложения (полный список — в `.env.example`):
 
 ```text
-TELEGRAM_BOT_TOKEN=...
+TELEGRAM_BOT_TOKEN=...      # заказы менеджеру
 TELEGRAM_CHAT_ID=...
+ADMIN_PASSWORD=...          # вход в /admin
+SMTP_HOST=... SMTP_USER=... SMTP_PASS=... SMTP_FROM=...   # письма покупателю
+OZONPAY_API_URL=... OZONPAY_ACCESS_KEY=... OZONPAY_SECRET_KEY=...
 ```
 
-Без них заявки с сайта не уходят (сервер отвечает «Приём заявок временно не работает»).
-Файл `.env` деплой не трогает.
+Заказы хранятся в `.data/orders.json` в каталоге приложения. Деплой не трогает ни `.env`, ни `.data`:
+FTP-выгрузка удаляет только то, что сама загрузила. Делайте копию `.data/orders.json` вместе с бэкапами.
+
+`NEXT_PUBLIC_SITE_URL` и `NEXT_PUBLIC_PAYMENTS_ENABLED` вшиваются при сборке — их задают переменными
+репозитория на GitHub (раздел 2), а не в `.env`.
 
 ## 2. Настройки репозитория на GitHub
 
@@ -40,6 +46,8 @@ Settings → Secrets and variables → Actions:
 
 **Variables:**
 
+- `NEXT_PUBLIC_SITE_URL` — основной домен, по умолчанию `https://хочу-тент.рф`;
+- `NEXT_PUBLIC_PAYMENTS_ENABLED` — `true`, когда подключена оплата Ozon Pay (по умолчанию выключена);
 - `HOSTLAND_APP_DIR` — каталог приложения от корня FTP, со слешем в конце:
   `./xn----jtbybvccot.xn--p1ai/projects/xochu-tent/`.
 

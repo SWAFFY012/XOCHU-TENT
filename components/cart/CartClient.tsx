@@ -3,62 +3,97 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CheckCircle2, CreditCard, Loader2, Minus, Navigation, Plus, Send, Trash2 } from "lucide-react";
+import { CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Trash2 } from "lucide-react";
 import { ProductArt } from "@/components/ProductArt";
+import { PaymentBadges } from "@/components/PaymentBadges";
 import { cartTotal, cartWeight, useCart, useHydrated } from "@/lib/cart";
-import { formatArea, formatPrice, formatSize, formatWeight, plural } from "@/lib/format";
-import { deliveryServices, routeUrl, site, type DeliveryServiceId } from "@/lib/site";
+import { formatArea, formatPrice, formatSize, formatWeight } from "@/lib/format";
+import { deliveryPayment, deliveryServices, paymentsEnabled, routeUrl, site, type DeliveryServiceId } from "@/lib/site";
 
 type Intent = "pay" | "lead";
-type Status =
-  | { state: "idle" }
-  | { state: "sending"; intent: Intent }
-  | { state: "done"; id: string; intent: Intent }
-  | { state: "error"; message: string };
-type Errors = Partial<Record<"name" | "phone" | "telegram" | "city" | "consent", string>>;
+type Status = { state: "idle" } | { state: "sending"; intent: Intent } | { state: "error"; message: string };
+type Field = "name" | "phone" | "email" | "telegram" | "city" | "address" | "consent" | "offer";
+type Errors = Partial<Record<Field, string>>;
 
-const PHONE_RE = /^\+?[\d\s\-()]{10,18}$/;
 // Ник Telegram: @username (5–32 символа: латиница, цифры, _) или ссылка t.me/username
 const TG_RE = /^(?:@|(?:https?:\/\/)?t\.me\/)?[a-zA-Z][a-zA-Z0-9_]{4,31}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Маска телефона: что бы ни ввели, показываем «+7 (900) 123-45-67». */
+function maskPhone(raw: string) {
+  let d = raw.replace(/\D/g, "");
+  if (!d) return "";
+  if (d[0] === "8") d = "7" + d.slice(1);
+  if (d[0] !== "7") d = "7" + d;
+  d = d.slice(0, 11);
+  const p = [d.slice(1, 4), d.slice(4, 7), d.slice(7, 9), d.slice(9, 11)];
+  let s = "+7";
+  if (p[0]) s += ` (${p[0]}`;
+  if (p[0].length === 3) s += ")";
+  if (p[1]) s += ` ${p[1]}`;
+  if (p[2]) s += `-${p[2]}`;
+  if (p[3]) s += `-${p[3]}`;
+  return s;
+}
+
+const mapSrc = `https://yandex.ru/map-widget/v1/?ll=${site.map.lon}%2C${site.map.lat}&z=14&pt=${site.map.lon}%2C${site.map.lat}%2Cpm2rdm`;
+
+const deliveryNote =
+  deliveryPayment === "on_receipt"
+    ? "Доставка оплачивается отдельно — при получении, по тарифу службы."
+    : "Стоимость доставки добавим к заказу после расчёта.";
 
 export function CartClient() {
+  const router = useRouter();
   const hydrated = useHydrated();
   const { items, setQty, remove, clear } = useCart();
   const [status, setStatus] = useState<Status>({ state: "idle" });
   const [errors, setErrors] = useState<Errors>({});
+  const [phone, setPhone] = useState("");
   const [contact, setContact] = useState("phone");
-  const [delivery, setDelivery] = useState<"pickup" | "delivery">("pickup");
+  const [delivery, setDelivery] = useState<"pickup" | "carrier">("pickup");
   const [service, setService] = useState<DeliveryServiceId>("cdek");
   const total = cartTotal(items);
   const weight = cartWeight(items);
-  const hasCustom = items.some((i) => i.custom);
+  const count = items.reduce((s, i) => s + i.qty, 0);
+  const needsQuote = items.some((i) => i.quote);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Какой кнопкой отправили форму: «Оплатить» или «Отправить заявку»
+    // Какой кнопкой отправили: «Оформить и оплатить» или «Оставить заявку»
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const intent: Intent = submitter?.value === "pay" ? "pay" : "lead";
+    const intent: Intent = submitter?.value === "lead" ? "lead" : "pay";
     const fd = new FormData(e.currentTarget);
+    const get = (k: string) => String(fd.get(k) ?? "").trim();
     const form = {
-      name: String(fd.get("name") ?? "").trim(),
-      phone: String(fd.get("phone") ?? "").trim(),
-      city: String(fd.get("city") ?? "").trim(),
-      comment: String(fd.get("comment") ?? "").trim(),
-      contact,
-      telegram: contact === "telegram" ? String(fd.get("telegram") ?? "").trim() : "",
-      delivery,
-      service: delivery === "delivery" ? service : "",
       intent,
-      website: String(fd.get("website") ?? ""), // ловушка для ботов
+      name: get("name"),
+      phone,
+      email: get("email"),
+      contact,
+      telegram: contact === "telegram" ? get("telegram") : "",
+      comment: get("comment"),
+      delivery,
+      service: delivery === "carrier" ? service : "",
+      city: delivery === "carrier" ? get("city") : "",
+      address: delivery === "carrier" ? get("address") : "",
       consent: fd.get("consent") === "on",
+      offer: fd.get("offer") === "on",
+      website: get("website"), // ловушка для ботов
     };
+
+    const pay = intent === "pay";
     const errs: Errors = {};
-    if (form.name.length < 2) errs.name = "Укажите имя, чтобы менеджер знал, как к вам обращаться.";
-    if (!PHONE_RE.test(form.phone)) errs.phone = "Укажите телефон в формате +7 900 000-00-00.";
+    if (pay ? !/\S{2,}\s+\S{2,}/.test(form.name) : form.name.length < 2) errs.name = pay ? "Укажите фамилию и имя получателя." : "Укажите имя.";
+    if (phone.replace(/\D/g, "").length !== 11) errs.phone = "Введите телефон полностью: +7 (900) 000-00-00.";
+    if (form.email ? !EMAIL_RE.test(form.email) : pay) errs.email = "Укажите email — на него придёт электронный чек.";
     if (contact === "telegram" && !TG_RE.test(form.telegram)) errs.telegram = "Укажите ник в Telegram, например @hochutent.";
-    if (delivery === "delivery" && form.city.length < 2) errs.city = "Укажите город доставки — посчитаем стоимость.";
-    if (!form.consent) errs.consent = "Без согласия на обработку данных мы не сможем связаться с вами.";
+    if (delivery === "carrier" && form.city.length < 2) errs.city = "Укажите город.";
+    if (delivery === "carrier" && form.address.length < 3) errs.address = "Укажите адрес или пункт выдачи.";
+    if (!form.consent) errs.consent = "Нужно согласие на обработку персональных данных.";
+    if (pay && !form.offer) errs.offer = "Примите условия оферты, чтобы оформить заказ.";
     setErrors(errs);
     if (Object.keys(errs).length) {
       document.getElementById(`f-${Object.keys(errs)[0]}`)?.focus();
@@ -67,7 +102,7 @@ export function CartClient() {
 
     setStatus({ state: "sending", intent });
     try {
-      const res = await fetch("/api/lead", {
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -76,35 +111,13 @@ export function CartClient() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "Заявка не отправилась.");
+      if (!res.ok) throw new Error(data.error ?? "Заказ не отправился.");
       clear();
-      setStatus({ state: "done", id: data.id, intent });
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (data.paymentUrl) window.location.assign(data.paymentUrl);
+      else router.push(`/order/success?order=${encodeURIComponent(data.id)}`);
     } catch (err) {
-      setStatus({ state: "error", message: err instanceof Error ? err.message : "Заявка не отправилась." });
+      setStatus({ state: "error", message: err instanceof Error ? err.message : "Заказ не отправился." });
     }
-  }
-
-  if (status.state === "done") {
-    return (
-      <motion.div
-        initial={{ clipPath: "inset(0 50% 0 50% round 32px)" }}
-        animate={{ clipPath: "inset(0 0% 0 0% round 32px)" }}
-        transition={{ duration: 0.6, ease: [0.76, 0, 0.24, 1] }}
-        className="rounded-[32px] bg-tarp p-8 text-paper md:p-14"
-      >
-        <CheckCircle2 className="size-14 text-strap" aria-hidden />
-        <h2 className="mt-5 text-[3.2rem] md:text-7xl">{status.intent === "pay" ? `Заказ №${status.id} оформлен` : `Заявка №${status.id} принята`}</h2>
-        <p className="mt-4 max-w-[52ch] text-lg text-paper/80">
-          {status.intent === "pay"
-            ? `Онлайн-оплата на сайте скоро заработает. Пока менеджер проверит заказ и пришлёт ссылку на оплату — обычно за ${site.responseTime}.`
-            : `Менеджер свяжется с вами в течение ${site.responseTime} в рабочее время.`}
-        </p>
-        <Link href="/catalog" className="btn btn-strap mt-8">
-          Вернуться в каталог
-        </Link>
-      </motion.div>
-    );
   }
 
   if (!hydrated) return <div className="h-80 animate-pulse rounded-3xl bg-paper" />;
@@ -112,10 +125,8 @@ export function CartClient() {
   if (!items.length) {
     return (
       <div className="rounded-[32px] border-2 border-dashed border-line p-8 text-center md:p-14">
-        <p className="font-display text-5xl font-extrabold">В заявке пока пусто</p>
-        <p className="mx-auto mt-3 max-w-[44ch] text-ink-soft">
-          Выберите изделие в каталоге и нажмите «Добавить в заявку». Или позвоните — оформим по телефону.
-        </p>
+        <p className="font-display text-5xl font-extrabold">Корзина пуста</p>
+        <p className="mx-auto mt-3 max-w-[44ch] text-ink-soft">Выберите изделие в каталоге и нажмите «В корзину». Или позвоните — оформим по телефону.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link href="/catalog" className="btn btn-strap">
             Открыть каталог
@@ -128,183 +139,272 @@ export function CartClient() {
     );
   }
 
+  const sending = status.state === "sending";
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr] lg:items-start lg:gap-8">
-      <ul className="order-2 flex flex-col gap-3 lg:order-none">
-        <AnimatePresence initial={false}>
-          {items.map((i) => (
-            <motion.li
-              key={i.key}
-              layout
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -40, transition: { duration: 0.2 } }}
-              className="grid grid-cols-[5.5rem_1fr] gap-4 rounded-3xl bg-paper p-3 sm:grid-cols-[7rem_1fr] sm:p-4"
-            >
-              <Link href={`/catalog/${i.slug}`} className="aspect-[3/4] overflow-hidden rounded-2xl bg-[#e1e6dd]">
-                {i.image ? (
-                  <Image src={i.image} alt="" width={120} height={160} className="h-full w-full object-cover" />
-                ) : (
-                  <ProductArt kind={i.kind} color={i.color} className="h-full w-full p-1.5" />
-                )}
-              </Link>
-              <div className="flex min-w-0 flex-col gap-1">
-                <Link href={`/catalog/${i.slug}`} className="font-semibold leading-snug hover:text-oxford">
-                  {i.title}
+    <form onSubmit={onSubmit} noValidate className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
+      <div className="flex min-w-0 flex-col gap-6">
+        {/* товары */}
+        <ul className="flex flex-col gap-3" aria-label="Товары в корзине">
+          <AnimatePresence initial={false}>
+            {items.map((i) => (
+              <motion.li
+                key={i.key}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -40, transition: { duration: 0.2 } }}
+                className="grid grid-cols-[5.5rem_1fr] gap-4 rounded-3xl bg-paper p-3 sm:grid-cols-[7rem_1fr] sm:p-4"
+              >
+                <Link href={`/catalog/${i.slug}`} className="aspect-[3/4] overflow-hidden rounded-2xl bg-[#e1e6dd]">
+                  {i.image ? (
+                    <Image src={i.image} alt="" width={120} height={160} className="h-full w-full object-cover" />
+                  ) : (
+                    <ProductArt kind={i.kind} color={i.color} className="h-full w-full p-1.5" />
+                  )}
                 </Link>
-                <p className="text-sm text-ink-soft">
-                  {formatSize(i.size)}, {formatArea(i.area)} · {i.color}
-                  {i.option !== "Стандарт" && ` · ${i.option}`}
-                </p>
-                {i.custom && <span className="w-fit rounded-md bg-strap/30 px-1.5 py-0.5 text-xs font-semibold">Свой размер, цена ориентировочная</span>}
-                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
-                  <div className="flex items-center rounded-full bg-ink/6">
-                    <button type="button" className="grid size-10 place-items-center" onClick={() => setQty(i.key, i.qty - 1)} aria-label="Меньше">
-                      <Minus className="size-4" />
-                    </button>
-                    <span className="w-6 text-center font-semibold tabular-nums">{i.qty}</span>
-                    <button type="button" className="grid size-10 place-items-center" onClick={() => setQty(i.key, i.qty + 1)} aria-label="Больше">
-                      <Plus className="size-4" />
+                <div className="flex min-w-0 flex-col gap-1">
+                  <Link href={`/catalog/${i.slug}`} className="font-semibold leading-snug hover:text-oxford">
+                    {i.title}
+                  </Link>
+                  <p className="text-sm text-ink-soft">
+                    {formatSize(i.size)}, {formatArea(i.area)} · {i.color}
+                    {i.option !== "Стандарт" && ` · ${i.option}`}
+                  </p>
+                  {i.custom && (
+                    <span className="w-fit rounded-md bg-strap/30 px-1.5 py-0.5 text-xs font-semibold">
+                      {i.quote ? "Свой размер, цену подтвердит менеджер" : "Свой размер"}
+                    </span>
+                  )}
+                  <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
+                    <div className="flex items-center rounded-full bg-ink/6">
+                      <button type="button" className="grid size-10 place-items-center" onClick={() => setQty(i.key, i.qty - 1)} aria-label="Меньше">
+                        <Minus className="size-4" />
+                      </button>
+                      <span className="w-6 text-center font-semibold tabular-nums">{i.qty}</span>
+                      <button type="button" className="grid size-10 place-items-center" onClick={() => setQty(i.key, i.qty + 1)} aria-label="Больше">
+                        <Plus className="size-4" />
+                      </button>
+                    </div>
+                    <span className="font-display text-3xl font-extrabold">{formatPrice(i.price * i.qty)}</span>
+                    <button
+                      type="button"
+                      onClick={() => remove(i.key)}
+                      className="grid size-10 place-items-center rounded-full text-ink-soft hover:bg-danger/10 hover:text-danger"
+                      aria-label={`Удалить ${i.title}`}
+                    >
+                      <Trash2 className="size-4" />
                     </button>
                   </div>
-                  <span className="font-display text-3xl font-extrabold">{formatPrice(i.price * i.qty)}</span>
-                  <button type="button" onClick={() => remove(i.key)} className="grid size-10 place-items-center rounded-full text-ink-soft hover:bg-danger/10 hover:text-danger" aria-label={`Удалить ${i.title}`}>
-                    <Trash2 className="size-4" />
-                  </button>
                 </div>
-              </div>
-            </motion.li>
-          ))}
-        </AnimatePresence>
-      </ul>
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </ul>
 
-      {/* форма компактная: целиком помещается в экран, на телефоне — над списком товаров */}
-      <form onSubmit={onSubmit} noValidate className="order-1 flex flex-col gap-2.5 rounded-[28px] bg-paper p-4 sm:gap-3 md:p-6 lg:sticky lg:top-24 lg:order-none">
+        {/* получатель */}
+        <section className="flex flex-col gap-3 rounded-[28px] bg-paper p-4 md:p-6" aria-labelledby="h-recipient">
+          <h2 id="h-recipient" className="text-[1.9rem] leading-none">
+            Получатель
+          </h2>
+          <FormField id="name" label="Фамилия и имя" error={errors.name}>
+            <input id="f-name" name="name" autoComplete="name" placeholder="Иванов Иван" className="field min-h-11 py-2" aria-invalid={!!errors.name} aria-describedby="e-name" />
+          </FormField>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField id="phone" label="Телефон" error={errors.phone}>
+              <input
+                id="f-phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="+7 (900) 000-00-00"
+                value={phone}
+                onChange={(e) => setPhone(maskPhone(e.target.value))}
+                className="field min-h-11 py-2"
+                aria-invalid={!!errors.phone}
+                aria-describedby="e-phone"
+              />
+            </FormField>
+            <FormField id="email" label="Email" hint="для электронного чека" error={errors.email}>
+              <input
+                id="f-email"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="mail@example.ru"
+                className="field min-h-11 py-2"
+                aria-invalid={!!errors.email}
+                aria-describedby="e-email"
+              />
+            </FormField>
+          </div>
+          <fieldset>
+            <legend className="mb-1.5 text-sm font-semibold">Как с вами связаться</legend>
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              {[
+                ["phone", "Звонок"],
+                ["telegram", "Telegram"],
+                ["whatsapp", "WhatsApp"],
+              ].map(([v, l]) => (
+                <Choice key={v} name="contact" value={v} checked={contact === v} onChange={() => setContact(v)}>
+                  {l}
+                </Choice>
+              ))}
+            </div>
+          </fieldset>
+          <AnimatePresence initial={false}>
+            {contact === "telegram" && (
+              <motion.div
+                key="tg"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+                className="overflow-hidden"
+              >
+                <FormField id="telegram" label="Ник в Telegram" hint="напишем вам туда" error={errors.telegram}>
+                  <input
+                    id="f-telegram"
+                    name="telegram"
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    placeholder="@username"
+                    className="field min-h-11 py-2"
+                    aria-invalid={!!errors.telegram}
+                    aria-describedby="e-telegram"
+                  />
+                </FormField>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <FormField id="comment" label="Комментарий">
+            <textarea id="f-comment" name="comment" rows={2} maxLength={1000} placeholder="Пожелания по заказу" className="field min-h-11 resize-y py-2" />
+          </FormField>
+        </section>
+
+        {/* получение */}
+        <section className="flex flex-col gap-3 rounded-[28px] bg-paper p-4 md:p-6" aria-labelledby="h-delivery">
+          <h2 id="h-delivery" className="text-[1.9rem] leading-none">
+            Получение
+          </h2>
+          <div className="grid grid-cols-2 gap-2 text-sm" role="radiogroup" aria-label="Способ получения">
+            <Choice name="delivery" value="pickup" checked={delivery === "pickup"} onChange={() => setDelivery("pickup")} bold>
+              Самовывоз
+            </Choice>
+            <Choice name="delivery" value="carrier" checked={delivery === "carrier"} onChange={() => setDelivery("carrier")} bold>
+              Доставка
+            </Choice>
+          </div>
+
+          {delivery === "pickup" ? (
+            <div className="flex flex-col gap-3">
+              <p className="flex items-start gap-2">
+                <MapPin className="mt-0.5 size-5 shrink-0 text-tarp" aria-hidden />
+                <span>
+                  <b className="font-semibold">Бесплатно.</b> {site.address}. {site.hours}.
+                </span>
+              </p>
+              <div className="relative h-56 overflow-hidden rounded-2xl bg-[#e1e6dd] md:h-64">
+                <iframe src={mapSrc} title="Производство «Хочу Тент» на карте" loading="lazy" className="absolute inset-0 h-full w-full border-0" allowFullScreen />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <p className="max-w-[46ch] text-ink-soft">
+                  Сообщим о готовности по SMS, в Telegram или на почту — срок до {site.pickupReadyDays} рабочих дней.
+                </p>
+                <a href={routeUrl} target="_blank" rel="noopener" className="flex items-center gap-1 font-semibold text-oxford underline-offset-2 hover:underline">
+                  <Navigation className="size-3.5" aria-hidden /> Маршрут
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div role="radiogroup" aria-label="Служба доставки" className="flex flex-wrap gap-1.5 text-sm">
+                {deliveryServices.map((d) => (
+                  <label
+                    key={d.id}
+                    title={d.note}
+                    className="flex min-h-11 grow cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line px-3 has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-oxford"
+                  >
+                    <input type="radio" name="service" value={d.id} checked={service === d.id} onChange={() => setService(d.id)} className="sr-only" />
+                    {d.title}
+                  </label>
+                ))}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr_1.6fr]">
+                <FormField id="city" label="Город" error={errors.city}>
+                  <input id="f-city" name="city" autoComplete="address-level2" placeholder="Казань" className="field min-h-11 py-2" aria-invalid={!!errors.city} aria-describedby="e-city" />
+                </FormField>
+                <FormField id="address" label="Адрес или пункт выдачи" error={errors.address}>
+                  <input
+                    id="f-address"
+                    name="address"
+                    autoComplete="street-address"
+                    placeholder={deliveryServices.find((d) => d.id === service)?.note}
+                    className="field min-h-11 py-2"
+                    aria-invalid={!!errors.address}
+                    aria-describedby="e-address"
+                  />
+                </FormField>
+              </div>
+              <p className="rounded-xl bg-ink/5 px-3 py-2.5 text-sm">
+                Стоимость доставки рассчитает менеджер после оплаты товара. {deliveryNote} Передаём в службу за {site.handoverDays} дня.
+              </p>
+            </div>
+          )}
+        </section>
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
+      </div>
+
+      {/* итог и оплата */}
+      <div className="flex flex-col gap-3 rounded-[28px] bg-paper p-4 md:p-6 lg:sticky lg:top-24">
+        <h2 className="text-[1.9rem] leading-none">Ваш заказ</h2>
+        <dl className="flex flex-col gap-2 text-[0.95rem]">
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-soft">
+              Товары, {count} шт.
+            </dt>
+            <dd className="font-semibold tabular-nums">{formatPrice(total)}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-soft">Доставка</dt>
+            <dd className="text-right font-semibold">
+              {delivery === "pickup" ? "бесплатно" : deliveryPayment === "on_receipt" ? "при получении" : "рассчитает менеджер"}
+            </dd>
+          </div>
+          {weight > 0 && (
+            <div className="flex justify-between gap-3 text-sm text-ink-soft">
+              <dt>Вес заказа</dt>
+              <dd>≈ {formatWeight(weight)}</dd>
+            </div>
+          )}
+        </dl>
+        <div className="seam text-line" />
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-ink-soft">
-            {items.length} {plural(items.length, "позиция", "позиции", "позиций")}
-          </span>
+          <span className="font-semibold">Итого к оплате</span>
           <span className="font-display text-5xl leading-none font-extrabold">{formatPrice(total)}</span>
         </div>
-        <p className="-mt-1 text-sm text-ink-soft">
-          {weight > 0 && <>Вес заказа ≈ {formatWeight(weight)} · </>}
-          {delivery === "pickup" ? "самовывоз бесплатно" : "доставка по тарифу службы"}
-        </p>
-        {hasCustom && <p className="text-sm text-ink-soft">В заявке есть нестандартные размеры: итог ориентировочный.</p>}
-        <div className="seam text-line" />
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field id="name" label="Имя" error={errors.name}>
-            <input id="f-name" name="name" autoComplete="name" className="field min-h-11 py-2" aria-invalid={!!errors.name} aria-describedby="e-name" />
-          </Field>
-          <Field id="phone" label="Телефон" error={errors.phone}>
-            <input id="f-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 900 000-00-00" className="field min-h-11 py-2" aria-invalid={!!errors.phone} aria-describedby="e-phone" />
-          </Field>
-        </div>
-        <fieldset>
-          <legend className="mb-1.5 text-sm font-semibold">Как связаться</legend>
-          <div className="grid grid-cols-3 gap-2 text-sm">
-            {[
-              ["phone", "Звонок"],
-              ["telegram", "Telegram"],
-              ["whatsapp", "WhatsApp"],
-            ].map(([v, l]) => (
-              <label key={v} className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-oxford">
-                <input type="radio" name="contact" value={v} checked={contact === v} onChange={() => setContact(v)} className="sr-only" />
-                {l}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        {/* при выборе Telegram — поле для ника */}
-        <AnimatePresence initial={false}>
-          {contact === "telegram" && (
-            <motion.div
-              key="tg"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
-              className="overflow-hidden"
-            >
-              <Field id="telegram" label="Ник в Telegram" hint="напишем вам туда" error={errors.telegram}>
-                <input
-                  id="f-telegram"
-                  name="telegram"
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  placeholder="@username"
-                  className="field min-h-11 py-2"
-                  aria-invalid={!!errors.telegram}
-                  aria-describedby="e-telegram"
-                />
-              </Field>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {/* получение: самовывоз из Янино-1 или доставка службой */}
-        <fieldset>
-          <legend className="mb-1.5 text-sm font-semibold">Получение</legend>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            {(
-              [
-                ["pickup", "Самовывоз"],
-                ["delivery", "Доставка"],
-              ] as const
-            ).map(([v, l]) => (
-              <label key={v} className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line font-semibold has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-oxford">
-                <input type="radio" name="delivery" value={v} checked={delivery === v} onChange={() => setDelivery(v)} className="sr-only" />
-                {l}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        {delivery === "pickup" ? (
-          <p className="flex items-start justify-between gap-3 rounded-xl bg-ink/5 px-3 py-2.5 text-sm">
-            <span>
-              <b className="font-semibold">Бесплатно.</b> {site.addressShort}, {site.region}
-            </span>
-            <a href={routeUrl} target="_blank" rel="noopener" className="flex shrink-0 items-center gap-1 font-semibold text-oxford underline-offset-2 hover:underline">
-              <Navigation className="size-3.5" aria-hidden /> Маршрут
-            </a>
-          </p>
-        ) : (
-          <div role="radiogroup" aria-label="Служба доставки" className="flex flex-wrap gap-1 text-[0.8rem] sm:text-[0.82rem]">
-            {deliveryServices.map((d) => (
-              <label key={d.id} title={d.note} className="flex min-h-10 grow cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line px-2 has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-oxford">
-                <input type="radio" name="service" value={d.id} checked={service === d.id} onChange={() => setService(d.id)} className="sr-only" />
-                {d.title}
-              </label>
-            ))}
-          </div>
-        )}
-        <div className={delivery === "delivery" ? "grid gap-3 sm:grid-cols-[1fr_1.4fr]" : "grid gap-3"}>
-          {delivery === "delivery" && (
-            <Field id="city" label="Город доставки" error={errors.city}>
-              <input id="f-city" name="city" autoComplete="address-level2" placeholder="Например, Казань" className="field min-h-11 py-2" aria-invalid={!!errors.city} aria-describedby="e-city" />
-            </Field>
-          )}
-          <Field id="comment" label="Комментарий">
-            <input id="f-comment" name="comment" maxLength={1000} placeholder={delivery === "delivery" ? "адрес, ПВЗ, сроки" : "когда удобно забрать"} className="field min-h-11 py-2" />
-          </Field>
-        </div>
-        <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
-
-        <label className="flex items-start gap-3 text-sm">
-          <input id="f-consent" type="checkbox" name="consent" className="mt-0.5 size-5 shrink-0 accent-[var(--color-tarp)]" aria-invalid={!!errors.consent} aria-describedby="e-consent" />
-          <span>
-            Согласен на обработку персональных данных по{" "}
-            <Link href="/privacy" className="text-oxford underline underline-offset-2" target="_blank">
-              политике конфиденциальности
-            </Link>
-          </span>
-        </label>
-        {errors.consent && (
-          <p id="e-consent" className="-mt-2 text-sm text-danger">
-            {errors.consent}
-          </p>
-        )}
+        <Check id="consent" error={errors.consent}>
+          Согласен на обработку персональных данных по{" "}
+          <Link href="/privacy" className="text-oxford underline underline-offset-2" target="_blank">
+            политике конфиденциальности
+          </Link>
+        </Check>
+        <Check id="offer" error={errors.offer}>
+          Принимаю условия{" "}
+          <Link href="/oferta" className="text-oxford underline underline-offset-2" target="_blank">
+            публичной оферты
+          </Link>{" "}
+          и{" "}
+          <Link href="/returns" className="text-oxford underline underline-offset-2" target="_blank">
+            возврата
+          </Link>
+        </Check>
 
         {status.state === "error" && (
           <p className="rounded-xl bg-danger/10 p-3 text-sm text-danger" role="alert">
@@ -312,34 +412,59 @@ export function CartClient() {
           </p>
         )}
 
-        {/* «Оплатить» — для размеров из каталога; свой размер сначала подтверждает менеджер */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="submit"
-            name="intent"
-            value="pay"
-            disabled={status.state === "sending" || hasCustom}
-            className="btn btn-strap px-3 text-base disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {status.state === "sending" && status.intent === "pay" ? <Loader2 className="size-5 animate-spin" /> : <CreditCard className="size-5" aria-hidden />}
-            Оплатить
-          </button>
-          <button type="submit" name="intent" value="lead" disabled={status.state === "sending"} className="btn btn-ghost px-3 text-base disabled:opacity-60">
-            {status.state === "sending" && status.intent === "lead" ? <Loader2 className="size-5 animate-spin" /> : <Send className="size-4" aria-hidden />}
-            <span className="sm:hidden">Заявка</span>
-            <span className="hidden sm:inline">Отправить заявку</span>
-          </button>
-        </div>
-        {hasCustom && <p className="-mt-1 text-xs text-ink-soft">Свой размер оплачивается после подтверждения цены менеджером — отправьте заявку.</p>}
-      </form>
+        <button type="submit" name="intent" value="pay" disabled={sending || needsQuote} className="btn btn-strap min-h-14 w-full text-lg disabled:cursor-not-allowed disabled:opacity-50">
+          {sending && status.intent === "pay" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CreditCard className="size-5" aria-hidden />}
+          Оформить и оплатить
+        </button>
+        {needsQuote && <p className="-mt-1 text-sm text-ink-soft">Цену одного из своих размеров подтверждает менеджер — оставьте заявку на расчёт.</p>}
+        <p className="-mt-1 text-xs text-ink-soft">
+          {paymentsEnabled ? "Оплата картой или СБП на защищённой странице Ozon Pay." : "Ссылку на оплату картой или СБП пришлём после проверки заказа."}{" "}
+          <Link href="/oferta" className="underline underline-offset-2">Оферта</Link> ·{" "}
+          <Link href="/returns" className="underline underline-offset-2">Возврат и обмен</Link>
+        </p>
+        <PaymentBadges compact className="text-ink-soft" />
+
+        <div className="seam text-line" />
+        <button type="submit" name="intent" value="lead" disabled={sending} className="flex items-center justify-center gap-2 text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline disabled:opacity-60">
+          {sending && status.intent === "lead" && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          Нужен расчёт? <span className="font-semibold text-oxford">Оставить заявку менеджеру</span>
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function Choice({ name, value, checked, onChange, bold, children }: { name: string; value: string; checked: boolean; onChange: () => void; bold?: boolean; children: React.ReactNode }) {
+  return (
+    <label
+      className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-oxford ${bold ? "font-semibold" : ""}`}
+    >
+      <input type="radio" name={name} value={value} checked={checked} onChange={onChange} className="sr-only" />
+      {children}
+    </label>
+  );
+}
+
+function Check({ id, error, children }: { id: string; error?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="flex items-start gap-3 text-sm">
+        <input id={`f-${id}`} type="checkbox" name={id} className="mt-0.5 size-5 shrink-0 accent-[var(--color-tarp)]" aria-invalid={!!error} aria-describedby={`e-${id}`} />
+        <span>{children}</span>
+      </label>
+      {error && (
+        <p id={`e-${id}`} className="mt-1 text-sm text-danger">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 
-function Field({ id, label, hint, error, children }: { id: string; label: string; hint?: string; error?: string; children: React.ReactNode }) {
+function FormField({ id, label, hint, error, children }: { id: string; label: string; hint?: string; error?: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={`f-${id}`} className="flex items-baseline justify-between text-sm font-semibold">
+      <label htmlFor={`f-${id}`} className="flex items-baseline justify-between gap-2 text-sm font-semibold">
         {label}
         {hint && <span className="font-normal text-ink-soft">{hint}</span>}
       </label>

@@ -27,5 +27,5 @@ export const formatWeight = (kg: number) => `${kg.toLocaleString("ru-RU", { maxi
 /** Оценка веса нестандартного размера: площадь × средний вес м², не меньше 0,1 кг. */
 export const estimateWeight = (area: number, kgPerM2: number) => Math.max(0.1, Math.round(area * kgPerM2 * 10) / 10);
 
-/** Ориентировочная цена нестандартного размера: площадь × медиана ₽/м², округление до 10 ₽. */
-export const estimateCustom = (area: number, perM2: number) => Math.ceil((area * perM2) / 10) * 10;
+/** Цена своего размера: площадь × цена м² изделия, округление вверх до 10 ₽. Итоговая, считается и на сервере. */
+export const priceCustom = (area: number, perM2: number) => Math.ceil((area * perM2) / 10) * 10;

@@ -1,0 +1,94 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { LegalArticle } from "@/components/legal/LegalArticle";
+import { PaymentBadges } from "@/components/PaymentBadges";
+import { deliveryPayment, deliveryServices, routeUrl, site } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "Доставка и оплата",
+  description:
+    "Самовывоз из Янино-1 и доставка по России: СДЭК, Почта России, Ozon Логистика, Деловые Линии, ПЭК. Оплата картой МИР, Visa, Mastercard и через СБП.",
+  alternates: { canonical: "/delivery" },
+};
+
+export default function DeliveryPage() {
+  return (
+    <LegalArticle
+      title="Доставка и оплата"
+      edition={site.legalEdition}
+      lead={<p>Заберите заказ с производства в Янино-1 или получите по России одной из пяти служб доставки. Оплата — на сайте, картой или через СБП.</p>}
+    >
+      <section>
+        <h2>Сроки</h2>
+        <ul>
+          <li>Стандартные размеры со склада отгружаем за {site.shipStandard} после оплаты.</li>
+          <li>Свой размер шьём за {site.productionDays} после оплаты.</li>
+          <li>В транспортную компанию передаём в течение {site.handoverDays} дней с момента заказа или готовности изделия.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Самовывоз — бесплатно</h2>
+        <p>
+          С производства: {site.address}. {site.hours}.
+        </p>
+        <ol>
+          <li>Оформите и оплатите заказ на сайте, выбрав «Самовывоз».</li>
+          <li>
+            Сообщим о готовности по SMS, в Telegram или на почту — в течение {site.pickupReadyDays} рабочих дней.
+          </li>
+          <li>Предупредите о приезде по телефону {site.phone} и назовите номер заказа.</li>
+        </ol>
+        <p>
+          <a href={routeUrl} target="_blank" rel="noopener">
+            Построить маршрут в Яндекс Картах
+          </a>
+        </p>
+      </section>
+
+      <section>
+        <h2>Доставка по России</h2>
+        <ul>
+          {deliveryServices.map((d) => (
+            <li key={d.id}>
+              <b>{d.title}</b> — {d.note}.
+            </li>
+          ))}
+        </ul>
+        <p>
+          Стоимость считается по тарифу выбранной службы — по весу и габаритам упаковки (они указаны в карточке каждого товара) и
+          городу получения. Пока расчёт на сайте не подключён, точную сумму сообщит менеджер после оплаты товара.
+        </p>
+        <p>
+          <b>Кто оплачивает доставку:</b>{" "}
+          {deliveryPayment === "on_receipt"
+            ? "доставка оплачивается отдельно — покупателем при получении в пункте выдачи или курьеру по тарифу службы."
+            : "стоимость доставки добавляется к заказу и оплачивается онлайн вместе с товаром."}
+        </p>
+      </section>
+
+      <section>
+        <h2>Оплата</h2>
+        <ul>
+          <li>Банковской картой МИР, Visa, Mastercard или через СБП — на сайте при оформлении заказа.</li>
+          <li>Организации и ИП — по счёту, закрывающие документы отправим с заказом.</li>
+        </ul>
+        <p>
+          Платежи принимает сервис Ozon Pay: данные карты вводятся на его защищённой странице и магазину не передаются. Электронный чек
+          придёт на почту, указанную в заказе.
+        </p>
+        <div className="mt-4 rounded-2xl bg-tarp p-4 text-paper">
+          <PaymentBadges />
+        </div>
+      </section>
+
+      <section>
+        <h2>Возврат</h2>
+        <p>
+          Условия возврата и обмена — на странице <Link href="/returns">«Возврат и обмен»</Link>, полные условия покупки — в{" "}
+          <Link href="/oferta">публичной оферте</Link>.
+        </p>
+      </section>
+    </LegalArticle>
+  );
+}

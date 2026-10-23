@@ -115,12 +115,17 @@ export default function ContactsPage() {
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-sm text-ink-soft">Стоимость — по тарифу службы, считаем по весу и габаритам заказа.</p>
+            <p className="mt-3 text-sm text-ink-soft">
+              Стоимость — по тарифу службы, по весу и габаритам заказа.{" "}
+              <Link href="/delivery" className="text-oxford underline underline-offset-2">Подробнее о доставке</Link>
+            </p>
           </div>
           <div className="flex flex-col rounded-[28px] bg-tarp p-6 text-paper">
             <CreditCard className="size-7 text-strap" aria-hidden />
             <h3 className="mt-4 text-[2rem]">Оплата</h3>
-            <p className="mt-2 text-paper/75">Соберите заказ в корзине, выберите самовывоз или доставку и нажмите «Оплатить». Для юрлиц и ИП — оплата по счёту.</p>
+            <p className="mt-2 text-paper/75">
+              Онлайн на сайте картой МИР, Visa, Mastercard или через СБП — при оформлении заказа в корзине. Для юрлиц и ИП — оплата по счёту.
+            </p>
             <Link href="/cart" className="btn btn-strap mt-auto min-h-12 w-fit px-6 text-base max-lg:mt-5 lg:mt-6">
               Оформить и оплатить
             </Link>

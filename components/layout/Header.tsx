@@ -87,10 +87,10 @@ export function Header() {
               "relative flex h-11 items-center gap-2 rounded-full px-4 font-semibold",
               overHero ? "bg-paper/15 backdrop-blur" : "bg-ink text-paper",
             )}
-            aria-label={`Заявка, товаров: ${count}`}
+            aria-label={`Корзина, товаров: ${count}`}
           >
             <ShoppingBag className="size-[18px]" aria-hidden />
-            <span className="hidden sm:inline">Заявка</span>
+            <span className="hidden sm:inline">Корзина</span>
             <AnimatePresence>
               {count > 0 && (
                 <motion.span
@@ -128,7 +128,7 @@ export function Header() {
             transition={{ duration: 0.5, ease: [0.76, 0, 0.24, 1] }}
           >
             <nav className="flex flex-col" aria-label="Мобильное меню">
-              {[{ href: "/", label: "Главная" }, ...NAV, { href: "/cart", label: "Заявка" }].map((n, i) => (
+              {[{ href: "/", label: "Главная" }, ...NAV, { href: "/cart", label: "Корзина" }].map((n, i) => (
                 <motion.div
                   key={n.href}
                   initial={{ y: 40, opacity: 0 }}

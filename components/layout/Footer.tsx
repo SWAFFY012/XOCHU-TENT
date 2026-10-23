@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
+import { PaymentBadges } from "@/components/PaymentBadges";
 import { categories } from "@/lib/content";
 import { site } from "@/lib/site";
 
@@ -35,8 +36,10 @@ export function Footer() {
           <h2 className="mb-3 font-sans text-base font-semibold">Компания</h2>
           <ul className="flex flex-col gap-2 text-paper/75">
             <li><Link href="/about" className="hover:text-paper">О производстве</Link></li>
-            <li><Link href="/about#delivery" className="hover:text-paper">Доставка и оплата</Link></li>
+            <li><Link href="/delivery" className="hover:text-paper">Доставка и оплата</Link></li>
             <li><Link href="/contacts" className="hover:text-paper">Контакты</Link></li>
+            <li><Link href="/oferta" className="hover:text-paper">Оферта</Link></li>
+            <li><Link href="/returns" className="hover:text-paper">Возврат и обмен</Link></li>
             <li><Link href="/privacy" className="hover:text-paper">Политика конфиденциальности</Link></li>
           </ul>
         </nav>
@@ -52,9 +55,9 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="wrap flex flex-col gap-2 border-t border-paper/10 py-6 text-xs text-paper/50 md:flex-row md:justify-between">
+      <div className="wrap flex flex-col gap-4 border-t border-paper/10 py-6 text-xs text-paper/50 md:flex-row md:items-center md:justify-between">
         <span>© <Year /> {site.legalName}. ИНН {site.inn}, ОГРНИП {site.ogrn}</span>
-        <span>Цены на сайте не являются публичной офертой. Итоговую стоимость подтверждает менеджер.</span>
+        <PaymentBadges compact className="text-paper/70" />
       </div>
 
       <div className="pointer-events-none -mb-[0.18em] font-display text-[23vw] leading-[0.75] font-black whitespace-nowrap text-paper/[0.05] select-none" aria-hidden>

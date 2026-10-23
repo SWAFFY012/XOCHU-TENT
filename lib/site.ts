@@ -2,15 +2,20 @@
 // ЕДИНЫЙ КОНФИГ ЗАГЛУШЕК. Всё, что помечено TODO, замените на реальные данные.
 // ─────────────────────────────────────────────────────────────
 
+// origin приводит кириллический домен к punycode и убирает хвостовой слеш
+const SITE_URL = new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://xn----jtbybvccot.xn--p1ai").origin;
+
 export const site = {
   name: "Хочу Тент",
   legalName: "ИП Аракелов Артур Азатович",
   inn: "236701853098",
   ogrn: "324237500372978",
-  url: "https://hochutent.ru", // TODO: боевой домен (для canonical, sitemap, OG)
+  // Основной домен: canonical, sitemap, robots, OG. Задаётся в NEXT_PUBLIC_SITE_URL (punycode или кириллицей)
+  url: SITE_URL,
+  domain: "хочу-тент.рф",
   phone: "+7 (988) 418-68-86",
   phoneHref: "tel:+79884186886",
-  email: "zakaz@hochutent.ru", // TODO
+  email: "zakaz@hochutent.ru", // TODO: реальная почта для заказов и заявлений (домен hochutent.ru не наш)
   telegram: "https://t.me/hochutent", // TODO
   whatsapp: "https://wa.me/79000000000", // TODO
   ozon: "https://www.ozon.ru/seller/hochutent/",
@@ -32,12 +37,33 @@ export const site = {
   foundedYear: 2019, // TODO
   workshopArea: "600 м²", // TODO
   dailyOutput: "до 150 изделий в день", // TODO
-  // Онлайн-оплата: пока false — кнопка «Оплатить» отправляет заявку, менеджер присылает ссылку.
-  // Когда подключим эквайринг Ozon Банка, кнопка поведёт на платёжную форму.
-  onlinePayment: false,
+  // Сроки, на которые ссылаются оферта, «Доставка и оплата» и корзина
+  shipStandard: "1–2 дня", // отгрузка стандартных размеров
+  handoverDays: 3, // передача в ТК: до N дней с момента заказа или готовности
+  pickupReadyDays: 3, // самовывоз: сообщим о готовности в течение N рабочих дней
+  legalEdition: "23 октября 2026 года", // дата редакции оферты, возврата и доставки
 } as const;
 
-/** Способы получения заказа. Цены доставки пока считает менеджер; дальше — расчёт по API служб. */
+/**
+ * Онлайн-оплата через Ozon Pay. Пока false — «Оформить и оплатить» создаёт заказ,
+ * а ссылку на оплату присылает менеджер. true — покупатель уходит на платёжную форму.
+ */
+export const paymentsEnabled = process.env.NEXT_PUBLIC_PAYMENTS_ENABLED === "true";
+
+/**
+ * Кто и когда оплачивает доставку транспортной компанией.
+ * TODO: подтвердить у заказчика. "on_receipt" — покупатель платит ТК при получении;
+ * "with_order" — стоимость доставки добавляется к заказу и оплачивается онлайн вместе с товаром.
+ */
+export const deliveryPayment: "on_receipt" | "with_order" = "on_receipt";
+
+/**
+ * Изделия, для которых свой размер нельзя оплатить сразу: цену подтверждает менеджер.
+ * Для остальных цена из калькулятора итоговая. TODO: подтвердить список у заказчика.
+ */
+export const customQuoteOnly: readonly string[] = [];
+
+/** Службы доставки. Стоимость пока считает менеджер; расчёт по API — в lib/delivery. */
 export const deliveryServices = [
   { id: "cdek", title: "СДЭК", note: "пункт выдачи или курьер" },
   { id: "post", title: "Почта России", note: "до отделения" },
