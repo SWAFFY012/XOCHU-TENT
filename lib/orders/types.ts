@@ -39,14 +39,25 @@ export type OrderDelivery =
   | {
       method: "carrier";
       service: DeliveryServiceId;
+      /** до пункта выдачи (терминала, отделения) или курьером до двери */
+      mode: "pvz" | "door";
       city: string;
-      /** адрес или пункт выдачи */
+      /** адрес получателя (для двери и Почты) */
       address: string;
+      postalCode?: string;
+      /** выбранный пункт выдачи или терминал */
+      point?: { id: string; name: string; address: string };
       /** стоимость доставки, ₽; null — считает менеджер */
       cost: number | null;
+      /** срок в пути по расчёту службы, дней */
+      days?: string;
+      /** код тарифа службы из расчёта */
+      tariff?: string;
+      /** почему цену уточняет менеджер (крупный груз и т. п.) */
+      note?: string;
       /** номер отправления в ТК */
       track?: string;
-      /** номер заказа в системе ТК (Ozon и др.), если создан через API */
+      /** номер заказа в системе ТК, если создан через API */
       carrierOrderId?: string;
     };
 

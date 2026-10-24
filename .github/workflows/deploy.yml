@@ -45,6 +45,7 @@ jobs:
         env:
           NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
           NEXT_PUBLIC_PAYMENTS_ENABLED: ${{ vars.NEXT_PUBLIC_PAYMENTS_ENABLED }}
+          NEXT_PUBLIC_YANDEX_MAPS_KEY: ${{ vars.NEXT_PUBLIC_YANDEX_MAPS_KEY }}
 
       # standalone не копирует статику: кладём public и .next/static рядом с server.js
       - name: Assemble standalone

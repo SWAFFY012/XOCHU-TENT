@@ -63,15 +63,32 @@ export const deliveryPayment: "on_receipt" | "with_order" = "on_receipt";
  */
 export const customQuoteOnly: readonly string[] = [];
 
-/** Службы доставки. Стоимость пока считает менеджер; расчёт по API — в lib/delivery. */
+/**
+ * Службы доставки и способы получения у каждой. Стоимость считается по API (lib/delivery),
+ * без ключей службы — «рассчитает менеджер».
+ */
 export const deliveryServices = [
-  { id: "cdek", title: "СДЭК", note: "пункт выдачи или курьер" },
-  { id: "post", title: "Почта России", note: "до отделения" },
-  { id: "ozon", title: "Ozon Логистика", note: "пункт выдачи Ozon" },
-  { id: "dellin", title: "Деловые Линии", note: "до терминала или двери" },
-  { id: "pek", title: "ПЭК", note: "до терминала или двери" },
+  { id: "cdek", title: "СДЭК", modes: ["pvz", "door"], pvzLabel: "до пункта выдачи", note: "пункт выдачи или курьер, места до 1000 кг" },
+  { id: "post", title: "Почта России", modes: ["pvz"], pvzLabel: "до отделения по индексу", note: "до отделения, посылки до 20 кг" },
+  { id: "ozon", title: "Ozon Логистика", modes: ["pvz"], pvzLabel: "до пункта выдачи Ozon", note: "пункт выдачи Ozon" },
+  { id: "dellin", title: "Деловые Линии", modes: ["pvz", "door"], pvzLabel: "до терминала", note: "до терминала или двери, крупные и тяжёлые грузы" },
+  { id: "pek", title: "ПЭК", modes: ["pvz", "door"], pvzLabel: "до терминала", note: "до терминала или двери, крупные и тяжёлые грузы" },
 ] as const;
 export type DeliveryServiceId = (typeof deliveryServices)[number]["id"];
+
+/**
+ * Откуда отправляем: курьер «Хочу Тент» отвозит груз на терминал службы в Санкт-Петербурге.
+ * TODO: уточнить у заказчика терминалы СДЭК, ПЭК, Деловых Линий и отделение Почты, куда сдают груз.
+ */
+export const shipFrom = {
+  city: "Санкт-Петербург",
+  /** адрес для подбора ближайшего склада приёма (ПЭК) */
+  address: "Россия, Ленинградская обл., Всеволожский р-н, г.п. Янино-1",
+  /** отделение Почты, откуда уходят посылки */
+  postalCode: "188689",
+  /** код КЛАДР города отправки (Деловые Линии) */
+  kladr: "7800000000000000000000000",
+};
 
 /** Маршрут до самовывоза в Яндекс Картах */
 export const routeUrl = `https://yandex.ru/maps/?rtext=~${site.map.lat}%2C${site.map.lon}&rtt=auto`;

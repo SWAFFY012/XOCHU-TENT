@@ -31,13 +31,7 @@ export async function sellerApi<T>(method: string, body: unknown): Promise<T> {
 export const ozon: DeliveryProvider = {
   id: "ozon",
   ready: () => Boolean(process.env.OZON_SELLER_CLIENT_ID && process.env.OZON_SELLER_API_KEY),
-  // TODO: расчёт стоимости доставки Ozon Логистикой. Метод уточнить в документации Seller API
-  // или у менеджера Ozon (доставка заказов со своего сайта). Пока считает менеджер.
-  calculate: async () => null,
-  async createOrder() {
-    if (!this.ready()) return null;
-    // TODO: создание отправления для заказа с сайта. Нужен метод Seller API для внешних заказов
-    // (уточнить у Ozon: в открытой документации его нет); вызвать через sellerApi(method, body).
-    return null;
-  },
+  // TODO: расчёт и создание отправления Ozon Логистикой для заказов с сайта. Метод уточнить у менеджера Ozon
+  // (в открытой документации Seller API его нет); вызывать через sellerApi(method, body). Пока считает менеджер.
+  calculate: async () => [],
 };

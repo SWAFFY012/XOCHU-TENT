@@ -1,6 +1,6 @@
 import "server-only";
-import { findVariant, getSummary } from "@/lib/catalog";
-import { deliveryProviders } from "@/lib/delivery";
+import { findVariant, getProduct, getSummary } from "@/lib/catalog";
+import { quoteDelivery, toParcels } from "@/lib/delivery";
 import { estimateWeight, priceCustom } from "@/lib/format";
 import { customQuoteOnly, deliveryPayment, deliveryServices } from "@/lib/site";
 import type { ContactMethod, Order, OrderDelivery, OrderItem } from "./types";
@@ -16,13 +16,20 @@ export type CheckoutBody = {
   comment?: string;
   delivery?: string;
   service?: string;
+  mode?: string;
   city?: string;
   address?: string;
+  postalCode?: string;
+  pointId?: string;
+  pointName?: string;
+  pointAddress?: string;
   consent?: boolean;
   offer?: boolean;
   website?: string;
-  items?: { slug: string; option: string; color: string; size: string; qty: number; custom: boolean }[];
+  items?: CartLine[];
 };
+
+export type CartLine = { slug: string; option: string; color: string; size: string; qty: number; custom: boolean };
 
 export class CheckoutError extends Error {}
 
@@ -59,13 +66,85 @@ export async function buildOrder(body: CheckoutBody, ip: string): Promise<Omit<O
   const tg = clip(body.telegram, 64).match(TG_RE);
   if (contact === "telegram" && !tg) throw new CheckoutError("Проверьте ник в Telegram.");
 
-  if (!Array.isArray(body.items) || !body.items.length || body.items.length > 50) {
+  const items = resolveItems(body.items);
+  if (kind === "order" && items.some((i) => i.quote)) {
+    throw new CheckoutError("Цену одного из своих размеров подтверждает менеджер — оставьте заявку на расчёт.");
+  }
+
+  const itemsTotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const weight = Math.round(items.reduce((s, i) => s + i.weight * i.qty, 0) * 10) / 10;
+
+  const delivery = body.delivery === "carrier" ? await buildDelivery(body, items, itemsTotal) : ({ method: "pickup" } as const);
+  // предварительную цену (крупный груз) к оплате не добавляем — её подтверждает менеджер
+  const deliveryInTotal =
+    deliveryPayment === "with_order" && delivery.method === "carrier" && delivery.cost && !delivery.note ? delivery.cost : 0;
+
+  const now = new Date().toISOString();
+  return {
+    kind,
+    createdAt: now,
+    updatedAt: now,
+    status: "new",
+    customer: { name, phone, email, contact, telegram: contact === "telegram" && tg ? "@" + tg[1] : "" },
+    comment: clip(body.comment, 1000),
+    items,
+    itemsTotal,
+    weight,
+    delivery,
+    total: itemsTotal + deliveryInTotal,
+    payment: { provider: "ozonpay", status: "none", events: [] },
+    consent: { offer: Boolean(body.offer), personalData: true, at: now, ip },
+    history: [{ at: now, status: "new" }],
+  };
+}
+
+/** Доставка ТК: проверяет адрес или пункт выдачи и пересчитывает стоимость по API службы. */
+async function buildDelivery(body: CheckoutBody, items: OrderItem[], itemsTotal: number): Promise<OrderDelivery> {
+  const service = deliveryServices.find((d) => d.id === body.service);
+  if (!service) throw new CheckoutError("Выберите службу доставки.");
+  const mode = (service.modes as readonly string[]).includes(body.mode ?? "") ? (body.mode as "pvz" | "door") : service.modes[0];
+  const city = clip(body.city, 80);
+  const address = clip(body.address, 200);
+  const postalCode = clip(body.postalCode, 12).replace(/\D/g, "").slice(0, 6);
+  const pointId = clip(body.pointId, 64);
+  const point = pointId ? { id: pointId, name: clip(body.pointName, 120), address: clip(body.pointAddress, 200) } : undefined;
+
+  if (city.length < 2) throw new CheckoutError("Укажите город доставки.");
+  if (service.id === "post" && postalCode.length !== 6) throw new CheckoutError("Укажите индекс для доставки Почтой России.");
+  // до двери и Почтой нужен адрес; до пункта — выбранный пункт или адрес текстом, если карта пунктов недоступна
+  if ((mode === "door" || service.id === "post" || !point) && address.length < 3) {
+    throw new CheckoutError(mode === "door" || service.id === "post" ? "Укажите адрес доставки." : "Выберите пункт выдачи.");
+  }
+
+  const [option] = await quoteDelivery(
+    { city, address, postalCode, parcels: toParcels(items), value: itemsTotal, pointId: mode === "pvz" ? pointId || undefined : undefined },
+    service.id,
+  ).then((list) => list.filter((o) => o.mode === mode));
+  if (option?.unavailable) throw new CheckoutError(`${service.title} не возьмёт этот заказ: ${option.note}. Выберите другую службу.`);
+
+  return {
+    method: "carrier",
+    service: service.id,
+    mode,
+    city,
+    address,
+    postalCode: postalCode || undefined,
+    point: mode === "pvz" ? point : undefined,
+    cost: option?.cost ?? null,
+    days: option?.days,
+    tariff: option?.tariff,
+    note: option?.preliminary ? option.note : undefined,
+  };
+}
+
+/** Позиции корзины с ценой, весом и упаковкой по прайсу на сервере, а не из браузера. */
+export function resolveItems(lines: CartLine[] | undefined): OrderItem[] {
+  if (!Array.isArray(lines) || !lines.length || lines.length > 50) {
     throw new CheckoutError("Корзина пустая.");
   }
 
-  // Цены и веса — по прайсу на сервере, а не из браузера
   const items: OrderItem[] = [];
-  for (const it of body.items) {
+  for (const it of lines) {
     const p = getSummary(clip(it.slug, 60));
     const qty = Math.max(1, Math.min(99, Math.floor(Number(it.qty) || 1)));
     if (!p || !p.options.includes(it.option) || !p.colors.includes(it.color)) {
@@ -81,6 +160,7 @@ export async function buildOrder(body: CheckoutBody, ip: string): Promise<Omit<O
       const area = Math.round(w * l * 100) / 100;
       price = priceCustom(area, p.pricePerM2ByOption[it.option] ?? p.pricePerM2Median);
       weight = estimateWeight(area, p.kgPerM2);
+      box = estimateBox(p.slug, it.option, area);
     } else {
       const v = findVariant(p.slug, it.option, it.color, size);
       price = v?.price;
@@ -102,44 +182,12 @@ export async function buildOrder(body: CheckoutBody, ip: string): Promise<Omit<O
       box,
     });
   }
-  if (kind === "order" && items.some((i) => i.quote)) {
-    throw new CheckoutError("Цену одного из своих размеров подтверждает менеджер — оставьте заявку на расчёт.");
-  }
+  return items;
+}
 
-  const itemsTotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const weight = Math.round(items.reduce((s, i) => s + i.weight * i.qty, 0) * 10) / 10;
-
-  let delivery: OrderDelivery = { method: "pickup" };
-  if (body.delivery === "carrier") {
-    const service = deliveryServices.find((d) => d.id === body.service);
-    const city = clip(body.city, 80);
-    const address = clip(body.address, 200);
-    if (!service) throw new CheckoutError("Выберите службу доставки.");
-    if (city.length < 2) throw new CheckoutError("Укажите город доставки.");
-    if (address.length < 3) throw new CheckoutError("Укажите адрес или пункт выдачи.");
-    // Пока API служб не подключены, calculate() вернёт null — стоимость посчитает менеджер
-    const quote = await deliveryProviders[service.id]
-      .calculate({ city, address, weight, boxes: items.flatMap((i) => Array(i.qty).fill(i.box)), value: itemsTotal })
-      .catch(() => null);
-    delivery = { method: "carrier", service: service.id, city, address, cost: quote?.cost ?? null };
-  }
-  const deliveryInTotal = deliveryPayment === "with_order" && delivery.method === "carrier" && delivery.cost ? delivery.cost : 0;
-
-  const now = new Date().toISOString();
-  return {
-    kind,
-    createdAt: now,
-    updatedAt: now,
-    status: "new",
-    customer: { name, phone, email, contact, telegram: contact === "telegram" && tg ? "@" + tg[1] : "" },
-    comment: clip(body.comment, 1000),
-    items,
-    itemsTotal,
-    weight,
-    delivery,
-    total: itemsTotal + deliveryInTotal,
-    payment: { provider: "ozonpay", status: "none", events: [] },
-    consent: { offer: Boolean(body.offer), personalData: true, at: now, ip },
-    history: [{ at: now, status: "new" }],
-  };
+/** Упаковка своего размера — как у ближайшего большего стандартного размера того же изделия. */
+function estimateBox(slug: string, option: string, area: number) {
+  const vs = (getProduct(slug)?.variants ?? []).filter((v) => v.option === option).sort((a, b) => a.area - b.area);
+  const v = vs.find((x) => x.area >= area) ?? vs.at(-1);
+  return v ? v.box.join("×") : "";
 }

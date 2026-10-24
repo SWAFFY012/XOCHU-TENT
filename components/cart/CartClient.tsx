@@ -6,15 +6,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Trash2 } from "lucide-react";
+import { DeliveryPicker } from "@/components/cart/DeliveryPicker";
 import { ProductArt } from "@/components/ProductArt";
 import { PaymentBadges } from "@/components/PaymentBadges";
 import { cartTotal, cartWeight, useCart, useHydrated } from "@/lib/cart";
 import { formatArea, formatPrice, formatSize, formatWeight } from "@/lib/format";
-import { deliveryPayment, deliveryServices, paymentsEnabled, routeUrl, site, type DeliveryServiceId } from "@/lib/site";
+import type { DeliveryOption } from "@/lib/delivery/types";
+import { deliveryPayment, paymentsEnabled, routeUrl, site } from "@/lib/site";
 
 type Intent = "pay" | "lead";
 type Status = { state: "idle" } | { state: "sending"; intent: Intent } | { state: "error"; message: string };
-type Field = "name" | "phone" | "email" | "telegram" | "city" | "address" | "consent" | "offer";
+type Field = "name" | "phone" | "email" | "telegram" | "service" | "city" | "postalCode" | "point" | "address" | "consent" | "offer";
 type Errors = Partial<Record<Field, string>>;
 
 // Ник Telegram: @username (5–32 символа: латиница, цифры, _) или ссылка t.me/username
@@ -40,11 +42,6 @@ function maskPhone(raw: string) {
 
 const mapSrc = `https://yandex.ru/map-widget/v1/?ll=${site.map.lon}%2C${site.map.lat}&z=14&pt=${site.map.lon}%2C${site.map.lat}%2Cpm2rdm`;
 
-const deliveryNote =
-  deliveryPayment === "on_receipt"
-    ? "Доставка оплачивается отдельно — при получении, по тарифу службы."
-    : "Стоимость доставки добавим к заказу после расчёта.";
-
 export function CartClient() {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -54,8 +51,11 @@ export function CartClient() {
   const [phone, setPhone] = useState("");
   const [contact, setContact] = useState("phone");
   const [delivery, setDelivery] = useState<"pickup" | "carrier">("pickup");
-  const [service, setService] = useState<DeliveryServiceId>("cdek");
-  const total = cartTotal(items);
+  const [option, setOption] = useState<DeliveryOption | null>(null);
+  const goods = cartTotal(items);
+  // доставку добавляем к оплате, только если она оплачивается вместе с заказом и цена не предварительная
+  const shipping = delivery === "carrier" && deliveryPayment === "with_order" && option?.cost && !option.preliminary ? option.cost : 0;
+  const total = goods + shipping;
   const weight = cartWeight(items);
   const count = items.reduce((s, i) => s + i.qty, 0);
   const needsQuote = items.some((i) => i.quote);
@@ -76,9 +76,18 @@ export function CartClient() {
       telegram: contact === "telegram" ? get("telegram") : "",
       comment: get("comment"),
       delivery,
-      service: delivery === "carrier" ? service : "",
-      city: delivery === "carrier" ? get("city") : "",
-      address: delivery === "carrier" ? get("address") : "",
+      ...(delivery === "carrier"
+        ? {
+            service: get("service"),
+            mode: get("mode"),
+            city: get("city"),
+            postalCode: get("postalCode"),
+            address: get("address"),
+            pointId: get("pointId"),
+            pointName: get("pointName"),
+            pointAddress: get("pointAddress"),
+          }
+        : {}),
       consent: fd.get("consent") === "on",
       offer: fd.get("offer") === "on",
       website: get("website"), // ловушка для ботов
@@ -90,8 +99,14 @@ export function CartClient() {
     if (phone.replace(/\D/g, "").length !== 11) errs.phone = "Введите телефон полностью: +7 (900) 000-00-00.";
     if (form.email ? !EMAIL_RE.test(form.email) : pay) errs.email = "Укажите email — на него придёт электронный чек.";
     if (contact === "telegram" && !TG_RE.test(form.telegram)) errs.telegram = "Укажите ник в Telegram, например @hochutent.";
-    if (delivery === "carrier" && form.city.length < 2) errs.city = "Укажите город.";
-    if (delivery === "carrier" && form.address.length < 3) errs.address = "Укажите адрес или пункт выдачи.";
+    if (delivery === "carrier") {
+      const post = form.service === "post";
+      if (form.city!.length < 2) errs.city = "Укажите город.";
+      if (post && form.postalCode!.length !== 6) errs.postalCode = "Для Почты нужен индекс из 6 цифр.";
+      if (!form.service) errs.service = "Выберите службу доставки.";
+      else if (get("needPoint") && !form.pointId) errs.point = "Выберите пункт выдачи на карте или в списке.";
+      else if (!get("needPoint") && form.address!.length < 3) errs.address = form.mode === "door" || post ? "Укажите улицу и дом." : "Укажите адрес пункта выдачи.";
+    }
     if (!form.consent) errs.consent = "Нужно согласие на обработку персональных данных.";
     if (pay && !form.offer) errs.offer = "Примите условия оферты, чтобы оформить заказ.";
     setErrors(errs);
@@ -322,39 +337,11 @@ export function CartClient() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              <div role="radiogroup" aria-label="Служба доставки" className="flex flex-wrap gap-1.5 text-sm">
-                {deliveryServices.map((d) => (
-                  <label
-                    key={d.id}
-                    title={d.note}
-                    className="flex min-h-11 grow cursor-pointer items-center justify-center rounded-xl border-[1.5px] border-line px-3 has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-paper has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-oxford"
-                  >
-                    <input type="radio" name="service" value={d.id} checked={service === d.id} onChange={() => setService(d.id)} className="sr-only" />
-                    {d.title}
-                  </label>
-                ))}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-[1fr_1.6fr]">
-                <FormField id="city" label="Город" error={errors.city}>
-                  <input id="f-city" name="city" autoComplete="address-level2" placeholder="Казань" className="field min-h-11 py-2" aria-invalid={!!errors.city} aria-describedby="e-city" />
-                </FormField>
-                <FormField id="address" label="Адрес или пункт выдачи" error={errors.address}>
-                  <input
-                    id="f-address"
-                    name="address"
-                    autoComplete="street-address"
-                    placeholder={deliveryServices.find((d) => d.id === service)?.note}
-                    className="field min-h-11 py-2"
-                    aria-invalid={!!errors.address}
-                    aria-describedby="e-address"
-                  />
-                </FormField>
-              </div>
-              <p className="rounded-xl bg-ink/5 px-3 py-2.5 text-sm">
-                Стоимость доставки рассчитает менеджер после оплаты товара. {deliveryNote} Передаём в службу за {site.handoverDays} дня.
-              </p>
-            </div>
+            <DeliveryPicker
+              lines={items.map(({ slug, option, color, size, qty, custom }) => ({ slug, option, color, size, qty, custom }))}
+              errors={errors}
+              onOption={setOption}
+            />
           )}
         </section>
         <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
@@ -368,12 +355,13 @@ export function CartClient() {
             <dt className="text-ink-soft">
               Товары, {count} шт.
             </dt>
-            <dd className="font-semibold tabular-nums">{formatPrice(total)}</dd>
+            <dd className="font-semibold tabular-nums">{formatPrice(goods)}</dd>
           </div>
           <div className="flex justify-between gap-3">
             <dt className="text-ink-soft">Доставка</dt>
             <dd className="text-right font-semibold">
-              {delivery === "pickup" ? "бесплатно" : deliveryPayment === "on_receipt" ? "при получении" : "рассчитает менеджер"}
+              {delivery === "pickup" ? "бесплатно" : option?.cost ? `${option.preliminary ? "≈ " : ""}${formatPrice(option.cost)}` : "рассчитает менеджер"}
+              {delivery === "carrier" && deliveryPayment === "on_receipt" && <span className="block text-xs font-normal text-ink-soft">оплата при получении</span>}
             </dd>
           </div>
           {weight > 0 && (

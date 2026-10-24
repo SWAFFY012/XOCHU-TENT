@@ -8,12 +8,15 @@ const CONTACT = { phone: "звонок", telegram: "Telegram", whatsapp: "WhatsA
 
 export const serviceTitle = (id: string) => deliveryServices.find((d) => d.id === id)?.title ?? id;
 
-/** Строка о получении: «Самовывоз…» или «СДЭК, Казань, ул. …». */
+/** Строка о получении: «Самовывоз…» или «СДЭК до пункта выдачи, Казань, ул. … — 1 250 ₽, 3–5 дн.». */
 export function deliveryLine(o: Order) {
   if (o.delivery.method === "pickup") return `Самовывоз: ${site.addressShort}`;
   const d = o.delivery;
-  const cost = d.cost ? formatPrice(d.cost) : "стоимость рассчитает менеджер";
-  return `${serviceTitle(d.service)}, ${d.city}, ${d.address} (${cost})`;
+  const service = deliveryServices.find((s) => s.id === d.service);
+  const how = d.mode === "door" ? "курьером до двери" : (service?.pvzLabel ?? "до пункта выдачи");
+  const where = d.point ? `${d.point.address} (${d.point.name}, код ${d.point.id})` : [d.postalCode, d.address].filter(Boolean).join(", ");
+  const cost = d.cost ? `${d.note ? "≈ " : ""}${formatPrice(d.cost)}${d.days ? `, ${d.days} дн.` : ""}` : "стоимость рассчитает менеджер";
+  return `${serviceTitle(d.service)} ${how}, ${d.city}, ${where} — ${cost}${d.note ? ` (${d.note})` : ""}`;
 }
 
 /** Сообщение менеджеру о новом заказе или заявке. */
@@ -45,10 +48,12 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
           ? "⚠️ Платёж не создался — отправьте покупателю ссылку на оплату."
           : "💳 Онлайн-оплата выключена — отправьте покупателю ссылку на оплату."
       : null,
-    o.delivery.method === "carrier" && !o.delivery.cost
+    o.delivery.method === "carrier"
       ? deliveryPayment === "on_receipt"
         ? "Доставку покупатель оплачивает при получении в ТК."
-        : "Посчитайте доставку и добавьте к оплате."
+        : !o.delivery.cost || o.delivery.note
+          ? "Посчитайте доставку и добавьте к оплате."
+          : null
       : null,
     opts.saved ? null : "⚠️ Заказ не сохранился на сервере — внесите вручную.",
   ]

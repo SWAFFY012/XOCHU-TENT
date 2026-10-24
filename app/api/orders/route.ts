@@ -6,17 +6,11 @@ import type { Order } from "@/lib/orders/types";
 import { notifyManager, telegramReady } from "@/lib/notify/telegram";
 import { adminEnabled } from "@/lib/admin-auth";
 import { buildPaymentRequest, createPayment } from "@/lib/payments/ozonpay";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { paymentsEnabled } from "@/lib/site";
 
-// Простой лимит: не больше 5 заказов с одного IP за 10 минут (в памяти инстанса)
-const hits = new Map<string, number[]>();
-function limited(ip: string) {
-  const now = Date.now();
-  const list = (hits.get(ip) ?? []).filter((t) => now - t < 10 * 60_000);
-  list.push(now);
-  hits.set(ip, list);
-  return list.length > 5;
-}
+// Не больше 5 заказов с одного IP за 10 минут
+const limited = rateLimit(5, 10 * 60_000);
 
 /**
  * Оформление заказа (intent "pay") или заявки на расчёт (intent "lead").
@@ -24,7 +18,7 @@ function limited(ip: string) {
  * в ответе приходит ссылка на платёжную форму Ozon Pay.
  */
 export async function POST(req: Request) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  const ip = clientIp(req);
   if (limited(ip)) {
     return NextResponse.json({ error: "Слишком много заказов подряд. Попробуйте через 10 минут." }, { status: 429 });
   }

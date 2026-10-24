@@ -2,8 +2,9 @@
 
 import { refresh } from "next/cache";
 import { isAdmin, signIn, signOut } from "@/lib/admin-auth";
-import { customerNotice, statusText } from "@/lib/orders/messages";
-import { updateOrder } from "@/lib/orders/store";
+import { deliveryProviders } from "@/lib/delivery";
+import { customerNotice, serviceTitle, statusText } from "@/lib/orders/messages";
+import { getOrder, updateOrder } from "@/lib/orders/store";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/orders/types";
 import { sendEmail } from "@/lib/notify/email";
 import { esc, notifyManager } from "@/lib/notify/telegram";
@@ -66,4 +67,51 @@ export async function setStatus(form: FormData) {
         : ""),
   );
   refresh();
+}
+
+/**
+ * Отправление в кабинете службы (сейчас — СДЭК) по данным заказа: пункт выдачи, тариф, места.
+ * Возвращает текст для админки: что создано или почему служба не приняла заказ.
+ */
+export async function createShipment(_: string | null, form: FormData): Promise<string | null> {
+  if (!(await isAdmin())) return "Нет доступа.";
+  const order = await getOrder(String(form.get("id") ?? ""));
+  if (!order || order.delivery.method !== "carrier") return "Заказ не найден.";
+  const d = order.delivery;
+  const provider = deliveryProviders[d.service];
+  if (!provider.createOrder || !provider.ready()) return `Для ${serviceTitle(d.service)} автоматическое оформление не подключено.`;
+  if (d.carrierOrderId) return "Отправление уже создано.";
+  try {
+    const r = await provider.createOrder(order);
+    // номер отправления служба присваивает не сразу — пробуем получить, иначе кнопка «Обновить трек»
+    const track = r.track ?? (await provider.getTrack?.(r.carrierOrderId).catch(() => null)) ?? undefined;
+    await updateOrder(order.id, (o) => {
+      if (o.delivery.method !== "carrier") return false;
+      o.delivery.carrierOrderId = r.carrierOrderId;
+      if (track) o.delivery.track = track;
+      o.history.push({ at: new Date().toISOString(), status: o.status, note: `отправление ${serviceTitle(d.service)} создано` });
+    });
+    refresh();
+    return track ? `Создано, трек ${track}.` : "Создано. Трек-номер появится через минуту — нажмите «Обновить трек».";
+  } catch (e) {
+    return `${serviceTitle(d.service)} не принял заказ: ${e instanceof Error ? e.message : e}`;
+  }
+}
+
+export async function refreshTrack(_: string | null, form: FormData): Promise<string | null> {
+  if (!(await isAdmin())) return "Нет доступа.";
+  const order = await getOrder(String(form.get("id") ?? ""));
+  if (!order || order.delivery.method !== "carrier" || !order.delivery.carrierOrderId) return "Отправление не создано.";
+  const provider = deliveryProviders[order.delivery.service];
+  try {
+    const track = await provider.getTrack?.(order.delivery.carrierOrderId);
+    if (!track) return "Служба ещё не присвоила номер — попробуйте позже.";
+    await updateOrder(order.id, (o) => {
+      if (o.delivery.method === "carrier") o.delivery.track = track;
+    });
+    refresh();
+    return `Трек ${track}.`;
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
 }

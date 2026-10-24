@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { adminEnabled, isAdmin } from "@/lib/admin-auth";
-import { formatPrice, formatSize } from "@/lib/format";
-import { deliveryLine } from "@/lib/orders/messages";
+import { deliveryProviders } from "@/lib/delivery";
+import { formatPrice, formatSize, formatWeight, plural } from "@/lib/format";
+import { deliveryLine, serviceTitle } from "@/lib/orders/messages";
 import { listOrders } from "@/lib/orders/store";
 import { ORDER_STATUSES, STATUS_LABEL, type Order } from "@/lib/orders/types";
 import { logout, setStatus } from "./actions";
 import { LoginForm } from "./LoginForm";
+import { ShipmentForm } from "./ShipmentForm";
 
 export const metadata: Metadata = {
   title: "Заказы",
@@ -59,6 +61,10 @@ async function AdminContent() {
 
 function OrderCard({ o }: { o: Order }) {
   const c = o.customer;
+  const d = o.delivery;
+  const provider = d.method === "carrier" ? deliveryProviders[d.service] : null;
+  const places = o.items.reduce((s, i) => s + i.qty, 0);
+  const canShip = d.method === "carrier" && o.kind === "order" && Boolean(provider?.createOrder && provider.ready());
   return (
     <article className="grid gap-4 rounded-3xl bg-paper p-4 md:grid-cols-[1.4fr_1fr] md:p-6">
       <div className="flex min-w-0 flex-col gap-1.5">
@@ -80,6 +86,25 @@ function OrderCard({ o }: { o: Order }) {
           {c.telegram && <> · {c.telegram}</>}
         </p>
         <p className="text-sm text-ink-soft">{deliveryLine(o)}</p>
+        {d.method === "carrier" && (d.carrierOrderId || d.track) && (
+          <p className="text-sm">
+            {d.track && (
+              <>
+                Трек: <b className="font-semibold">{d.track}</b>
+              </>
+            )}
+            {d.carrierOrderId && (
+              <span className="text-ink-soft">
+                {" "}
+                · заказ в кабинете {serviceTitle(d.service)}: {d.carrierOrderId}
+              </span>
+            )}
+          </p>
+        )}
+        <p className="text-xs text-ink-soft">
+          Вес ≈ {formatWeight(o.weight)} · {places} {plural(places, "место", "места", "мест")} · упаковка{" "}
+          {[...new Set(o.items.map((i) => i.box).filter(Boolean))].join(", ") || "—"} см
+        </p>
         {o.comment && <p className="text-sm">«{o.comment}»</p>}
         <details className="text-sm">
           <summary className="cursor-pointer font-semibold">
@@ -98,33 +123,34 @@ function OrderCard({ o }: { o: Order }) {
         </details>
       </div>
 
-      <form action={setStatus} className="flex flex-col gap-2 self-start">
-        <input type="hidden" name="id" value={o.id} />
-        <label className="text-sm font-semibold" htmlFor={`st-${o.id}`}>
-          Статус
-        </label>
-        <select id={`st-${o.id}`} name="status" defaultValue={o.status} className="field min-h-11 py-2">
-          {ORDER_STATUSES.filter((s) => (o.delivery.method === "pickup" ? s !== "handed_to_carrier" : s !== "ready_for_pickup")).map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s]}
-            </option>
-          ))}
-        </select>
-        {o.delivery.method === "carrier" && (
-          <>
-            <label className="text-sm font-semibold" htmlFor={`tr-${o.id}`}>
-              Трек-номер
-            </label>
-            <input id={`tr-${o.id}`} name="track" defaultValue={o.delivery.track ?? ""} className="field min-h-11 py-2" />
-          </>
-        )}
-        <button type="submit" className="btn btn-ink min-h-11 text-base">
-          Сохранить
-        </button>
-        <p className="text-xs text-ink-soft">
-          {o.delivery.method === "pickup" ? "«Готов к самовывозу»" : "«Передан в ТК»"} — покупателю уйдёт уведомление.
-        </p>
-      </form>
+      <div className="flex flex-col gap-3 self-start">
+        <form action={setStatus} className="flex flex-col gap-2">
+          <input type="hidden" name="id" value={o.id} />
+          <label className="text-sm font-semibold" htmlFor={`st-${o.id}`}>
+            Статус
+          </label>
+          <select id={`st-${o.id}`} name="status" defaultValue={o.status} className="field min-h-11 py-2">
+            {ORDER_STATUSES.filter((s) => (o.delivery.method === "pickup" ? s !== "handed_to_carrier" : s !== "ready_for_pickup")).map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
+          {o.delivery.method === "carrier" && (
+            <>
+              <label className="text-sm font-semibold" htmlFor={`tr-${o.id}`}>
+                Трек-номер
+              </label>
+              <input id={`tr-${o.id}`} name="track" defaultValue={o.delivery.track ?? ""} className="field min-h-11 py-2" />
+            </>
+          )}
+          <button type="submit" className="btn btn-ink min-h-11 text-base">
+            Сохранить
+          </button>
+          <p className="text-xs text-ink-soft">{o.delivery.method === "pickup" ? "«Готов к самовывозу»" : "«Передан в ТК»"} — покупателю уйдёт уведомление.</p>
+        </form>
+        {canShip && d.method === "carrier" && <ShipmentForm id={o.id} service={serviceTitle(d.service)} created={Boolean(d.carrierOrderId)} />}
+      </div>
     </article>
   );
 }

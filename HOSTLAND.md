@@ -26,12 +26,17 @@ TELEGRAM_CHAT_ID=...
 ADMIN_PASSWORD=...          # вход в /admin
 SMTP_HOST=... SMTP_USER=... SMTP_PASS=... SMTP_FROM=...   # письма покупателю
 OZONPAY_API_URL=... OZONPAY_ACCESS_KEY=... OZONPAY_SECRET_KEY=...
+CDEK_CLIENT_ID=... CDEK_CLIENT_SECRET=... CDEK_SHIPMENT_POINT=...   # расчёт и отправления СДЭК
+PEK_LOGIN=... PEK_API_KEY=...                                       # расчёт ПЭК
+DELLIN_APP_KEY=...                                                   # расчёт Деловых Линий
 ```
+
+Почта России считается без ключа. Служба без ключей остаётся в корзине с пометкой «рассчитает менеджер».
 
 Заказы хранятся в `.data/orders.json` в каталоге приложения. Деплой не трогает ни `.env`, ни `.data`:
 FTP-выгрузка удаляет только то, что сама загрузила. Делайте копию `.data/orders.json` вместе с бэкапами.
 
-`NEXT_PUBLIC_SITE_URL` и `NEXT_PUBLIC_PAYMENTS_ENABLED` вшиваются при сборке — их задают переменными
+`NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_PAYMENTS_ENABLED` и `NEXT_PUBLIC_YANDEX_MAPS_KEY` вшиваются при сборке — их задают переменными
 репозитория на GitHub (раздел 2), а не в `.env`.
 
 ## 2. Настройки репозитория на GitHub
@@ -48,6 +53,7 @@ Settings → Secrets and variables → Actions:
 
 - `NEXT_PUBLIC_SITE_URL` — основной домен, по умолчанию `https://хочу-тент.рф`;
 - `NEXT_PUBLIC_PAYMENTS_ENABLED` — `true`, когда подключена оплата Ozon Pay (по умолчанию выключена);
+- `NEXT_PUBLIC_YANDEX_MAPS_KEY` — ключ Яндекс Карт для выбора пункта выдачи в корзине;
 - `HOSTLAND_APP_DIR` — каталог приложения от корня FTP, со слешем в конце:
   `./xn----jtbybvccot.xn--p1ai/projects/xochu-tent/`.
 
