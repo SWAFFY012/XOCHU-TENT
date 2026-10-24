@@ -6,11 +6,8 @@ import type { Order } from "./types";
 /**
  * Заказы в одном JSON-файле. Рассчитано на десятки заказов в день на одном сервере (Hostland).
  * Файл лежит вне папки сборки: деплой по FTP удаляет только то, что сам загрузил, и .data не трогает.
- * На Vercel файловая система временная — там заказы живут до перезапуска (зеркало, не основной сайт).
  */
-const FILE =
-  process.env.ORDERS_FILE ||
-  (process.env.VERCEL ? "/tmp/hochutent/orders.json" : path.join(process.cwd(), ".data", "orders.json"));
+const FILE = process.env.ORDERS_FILE || path.join(process.cwd(), ".data", "orders.json");
 
 type Db = { seq: number; orders: Order[] };
 
