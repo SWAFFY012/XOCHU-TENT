@@ -10,7 +10,7 @@
 # Выгружается собранная папка .next/standalone (server.js, next-server.js, node_modules, .next, public, data).
 # Файлы, которых нет в сборке (.env с токеном Telegram, логи), на сервере не трогаются:
 # действие удаляет только то, что само загрузило раньше.
-# Последним шагом обновляется tmp/restart.txt — Passenger перезапускает приложение.
+# После кода обновляется tmp/restart.txt — обёртка hostland/server.js замечает это и перезапускает приложение.
 
 name: Deploy to Hostland
 
