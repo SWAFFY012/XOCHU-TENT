@@ -15,7 +15,7 @@ export const site = {
   domain: "хочу-тент.рф",
   phone: "+7 (988) 418-68-86",
   phoneHref: "tel:+79884186886",
-  email: "zakaz@hochutent.ru", // TODO: реальная почта для заказов и заявлений (домен hochutent.ru не наш)
+  email: "xochu.tent@mail.ru",
   telegram: "https://t.me/hochutent", // TODO
   whatsapp: "https://wa.me/79000000000", // TODO
   ozon: "https://www.ozon.ru/seller/hochutent/",
