@@ -66,6 +66,14 @@ export function PointsMap({
   const pick = useRef(onSelect);
   const chosen = useRef(selected);
   const [failed, setFailed] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  // API грузим, только когда карта на экране: бесплатный ключ — 100 вызовов в сутки
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setVisible(true), { rootMargin: "200px" });
+    if (el.current) io.observe(el.current);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     pick.current = onSelect;
@@ -74,6 +82,7 @@ export function PointsMap({
 
   // метки пересоздаём, когда сменился список пунктов
   useEffect(() => {
+    if (!visible) return;
     let cancelled = false;
     loadYmaps()
       .then((ym) => {
@@ -107,7 +116,7 @@ export function PointsMap({
     return () => {
       cancelled = true;
     };
-  }, [points]);
+  }, [points, visible]);
 
   // выбранная метка — красная, карта к ней
   useEffect(() => {
