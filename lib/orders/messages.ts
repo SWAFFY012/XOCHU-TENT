@@ -75,7 +75,7 @@ export function customerNotice(o: Order): { subject: string; text: string } | nu
   if (o.status === "ready_for_pickup") {
     return {
       subject: `Заказ №${o.id} готов к самовывозу`,
-      text: `Здравствуйте, ${o.customer.name}!\n\nВаш заказ №${o.id} готов. Забрать можно по адресу: ${site.address}.\n${site.hours}. Предупредите о приезде по телефону ${site.phone}.${sign}`,
+      text: `Здравствуйте, ${o.customer.name}!\n\nВаш заказ №${o.id} готов. Забрать можно по адресу: ${site.address}.\n${site.hours}. Если удобнее приехать в другое время — позвоните: ${site.phone}.${sign}`,
     };
   }
   if (o.status === "handed_to_carrier" && o.delivery.method === "carrier") {

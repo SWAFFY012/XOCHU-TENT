@@ -24,6 +24,7 @@ export default function DeliveryPage() {
           <li>Стандартные размеры со склада отгружаем за {site.shipStandard} после оплаты.</li>
           <li>Свой размер шьём за {site.productionDays} после оплаты.</li>
           <li>В транспортную компанию передаём в течение {site.handoverDays} дней с момента заказа или готовности изделия.</li>
+          <li>Отгружаем {site.shipDays}.</li>
         </ul>
       </section>
 
@@ -37,7 +38,7 @@ export default function DeliveryPage() {
           <li>
             Сообщим о готовности по SMS, в Telegram или на почту — в течение {site.pickupReadyDays} рабочих дней.
           </li>
-          <li>Предупредите о приезде по телефону {site.phone} и назовите номер заказа.</li>
+          <li>Менеджер позвонит, когда заказ будет готов, и договорится с вами о времени. Приезжайте с номером заказа.</li>
         </ol>
         <p>
           <a href={routeUrl} target="_blank" rel="noopener">

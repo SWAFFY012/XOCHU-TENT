@@ -22,7 +22,7 @@ export default function ContactsPage() {
     address: { "@type": "PostalAddress", streetAddress: site.address, addressLocality: site.city, addressRegion: site.region, addressCountry: "RU" },
     hasMap: site.yandexOrgUrl,
     geo: { "@type": "GeoCoordinates", latitude: lat, longitude: lon },
-    openingHours: site.hours,
+    openingHours: site.hoursSchema,
   };
 
   return (

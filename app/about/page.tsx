@@ -20,7 +20,7 @@ const FACTS = [
 ];
 
 const DELIVERY = [
-  { icon: Building2, t: "Самовывоз — бесплатно", d: `С производства: ${site.address}. Предупредите о приезде заранее.` },
+  { icon: Building2, t: "Самовывоз — бесплатно", d: `С производства: ${site.address}. ${site.hours}, о готовности заказа сообщим по телефону.` },
   ...deliveryServices.map((s) => ({ icon: Truck, t: s.title, d: `Доставка по России: ${s.note}. Стоимость по тарифу службы, по весу и габаритам заказа.` })),
 ];
 
