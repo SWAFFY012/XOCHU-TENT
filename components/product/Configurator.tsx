@@ -10,7 +10,7 @@ import { useCart } from "@/lib/cart";
 import { hexOf } from "@/lib/colors";
 import { priceCustom, estimateWeight, formatArea, formatPrice, formatWeight, parseSize } from "@/lib/format";
 import { sizeLabels } from "@/lib/content";
-import { customQuoteOnly } from "@/lib/site";
+import { isQuoteOnly } from "@/lib/site";
 import type { CompactVariants, ProductSummary } from "@/lib/types";
 
 export type Selection = { option: string; size: string; custom: boolean };
@@ -90,8 +90,9 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
   const customValid = w >= 0.5 && l >= 0.5 && w <= 30 && l <= 50;
   const customArea = customValid ? Math.round(w * l * 100) / 100 : 0;
   const customPrice = customValid ? priceCustom(customArea, perM2) : 0;
-  // Свой размер у некоторых изделий оплачивается после расчёта менеджером
-  const quoteOnly = customQuoteOnly.includes(p.slug);
+  // Окна (любой размер) и свой размер у некоторых изделий — по заявке: цену и детали согласует менеджер
+  const productQuote = isQuoteOnly(p.slug, false);
+  const quoteOnly = isQuoteOnly(p.slug, custom);
 
   const unitPrice = custom ? customPrice : (priceBySize.get(current) ?? 0);
   const row = rowBySize.get(current);
@@ -114,7 +115,7 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
         area: custom ? customArea : data.areas[current],
         price: unitPrice,
         custom,
-        quote: custom && quoteOnly,
+        quote: quoteOnly,
         image,
         weight: unitWeight || undefined,
         box,
@@ -266,7 +267,7 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
             </div>
             <div className="mt-1 flex items-baseline gap-2">
               <PriceTicker value={total} className="font-display text-5xl leading-none font-extrabold" />
-              {custom && <span className="rounded-md bg-strap px-1.5 py-0.5 text-xs font-semibold text-ink">{quoteOnly ? "цену подтвердит менеджер" : "свой размер"}</span>}
+              {(custom || quoteOnly) && <span className="rounded-md bg-strap px-1.5 py-0.5 text-xs font-semibold text-ink">{quoteOnly ? "цену подтвердит менеджер" : "свой размер"}</span>}
             </div>
           </div>
           <div className="flex items-center rounded-full bg-paper/10">
@@ -282,6 +283,9 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
           </div>
         </div>
         {qty > 1 && unitPrice > 0 && <p className="mt-1 text-sm text-paper/60">{formatPrice(unitPrice)} за штуку</p>}
+        {productQuote && (
+          <p className="mt-2 text-sm text-paper/70">Окна шьём по заявке: менеджер уточнит размеры и крепление, назовёт итоговую цену и пришлёт ссылку на оплату.</p>
+        )}
         {unitWeight > 0 && (
           <p className="mt-2 flex items-center gap-2 text-sm text-paper/70">
             <Package className="size-4 shrink-0" aria-hidden />
@@ -300,11 +304,11 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
           <AnimatePresence mode="wait" initial={false}>
             {added ? (
               <motion.span key="ok" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -10, opacity: 0 }} className="flex items-center gap-2">
-                <Check className="size-5" /> В корзине
+                <Check className="size-5" /> {productQuote ? "В заявке" : "В корзине"}
               </motion.span>
             ) : (
               <motion.span key="add" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -10, opacity: 0 }} className="flex items-center gap-2">
-                <ShoppingBag className="size-5" /> В корзину
+                <ShoppingBag className="size-5" /> {productQuote ? "Добавить в заявку" : "В корзину"}
               </motion.span>
             )}
           </AnimatePresence>
@@ -313,7 +317,7 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
           {added && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
               <Link href="/cart" className="mt-3 block text-center text-sm font-semibold text-strap underline underline-offset-4">
-                Перейти к оформлению заказа
+                {productQuote ? "Перейти к отправке заявки" : "Перейти к оформлению заказа"}
               </Link>
             </motion.div>
           )}

@@ -64,6 +64,15 @@ export const deliveryPayment: "on_receipt" | "with_order" = "on_receipt";
 export const customQuoteOnly: readonly string[] = [];
 
 /**
+ * Изделия только по заявке, в любом размере: менеджер обсуждает детали с покупателем
+ * и потом присылает ссылку на оплату. Сейчас — мягкие окна (прозрачные и тонированные).
+ */
+export const quoteOnlyProducts: readonly string[] = ["myagkoe-okno", "myagkoe-okno-tonirovannoe"];
+
+/** Позиция оформляется заявкой, а не оплатой: окна целиком или свой размер из customQuoteOnly. */
+export const isQuoteOnly = (slug: string, custom: boolean) => quoteOnlyProducts.includes(slug) || (custom && customQuoteOnly.includes(slug));
+
+/**
  * Службы доставки и способы получения у каждой. Стоимость считается по API (lib/delivery),
  * без ключей службы — «рассчитает менеджер».
  */

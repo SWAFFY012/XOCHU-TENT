@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Trash2 } from "lucide-react";
+import { CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Send, Trash2 } from "lucide-react";
 import { DeliveryPicker } from "@/components/cart/DeliveryPicker";
 import { ShopMap } from "@/components/ShopMap";
 import { ProductArt } from "@/components/ProductArt";
@@ -13,7 +13,7 @@ import { PaymentBadges } from "@/components/PaymentBadges";
 import { cartTotal, cartWeight, useCart, useHydrated } from "@/lib/cart";
 import { formatArea, formatPrice, formatSize, formatWeight } from "@/lib/format";
 import type { DeliveryOption } from "@/lib/delivery/types";
-import { deliveryPayment, paymentsEnabled, routeUrl, site } from "@/lib/site";
+import { deliveryPayment, isQuoteOnly, paymentsEnabled, routeUrl, site } from "@/lib/site";
 
 type Intent = "pay" | "lead";
 type Status = { state: "idle" } | { state: "sending"; intent: Intent } | { state: "error"; message: string };
@@ -57,7 +57,8 @@ export function CartClient() {
   const total = goods + shipping;
   const weight = cartWeight(items);
   const count = items.reduce((s, i) => s + i.qty, 0);
-  const needsQuote = items.some((i) => i.quote);
+  // окна и часть своих размеров — по заявке; старые позиции в корзине без флага тоже проверяем по товару
+  const needsQuote = items.some((i) => i.quote || isQuoteOnly(i.slug, i.custom));
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -189,6 +190,9 @@ export function CartClient() {
                     <span className="w-fit rounded-md bg-strap/30 px-1.5 py-0.5 text-xs font-semibold">
                       {i.quote ? "Свой размер, цену подтвердит менеджер" : "Свой размер"}
                     </span>
+                  )}
+                  {!i.custom && isQuoteOnly(i.slug, false) && (
+                    <span className="w-fit rounded-md bg-strap/30 px-1.5 py-0.5 text-xs font-semibold">По заявке, цену подтвердит менеджер</span>
                   )}
                   <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
                     <div className="flex items-center rounded-full bg-ink/6">
@@ -370,7 +374,7 @@ export function CartClient() {
         </dl>
         <div className="seam text-line" />
         <div className="flex items-baseline justify-between gap-3">
-          <span className="font-semibold">Итого к оплате</span>
+          <span className="font-semibold">{needsQuote ? "Предварительно" : "Итого к оплате"}</span>
           <span className="font-display text-5xl leading-none font-extrabold">{formatPrice(total)}</span>
         </div>
 
@@ -380,16 +384,18 @@ export function CartClient() {
             политике конфиденциальности
           </Link>
         </Check>
-        <Check id="offer" error={errors.offer}>
-          Принимаю условия{" "}
-          <Link href="/oferta" className="text-oxford underline underline-offset-2" target="_blank">
-            публичной оферты
-          </Link>{" "}
-          и{" "}
-          <Link href="/returns" className="text-oxford underline underline-offset-2" target="_blank">
-            возврата
-          </Link>
-        </Check>
+        {!needsQuote && (
+          <Check id="offer" error={errors.offer}>
+            Принимаю условия{" "}
+            <Link href="/oferta" className="text-oxford underline underline-offset-2" target="_blank">
+              публичной оферты
+            </Link>{" "}
+            и{" "}
+            <Link href="/returns" className="text-oxford underline underline-offset-2" target="_blank">
+              возврата
+            </Link>
+          </Check>
+        )}
 
         {status.state === "error" && (
           <p className="rounded-xl bg-danger/10 p-3 text-sm text-danger" role="alert">
@@ -397,23 +403,36 @@ export function CartClient() {
           </p>
         )}
 
-        <button type="submit" name="intent" value="pay" disabled={sending || needsQuote} className="btn btn-strap min-h-14 w-full text-lg disabled:cursor-not-allowed disabled:opacity-50">
-          {sending && status.intent === "pay" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CreditCard className="size-5" aria-hidden />}
-          Оформить и оплатить
-        </button>
-        {needsQuote && <p className="-mt-1 text-sm text-ink-soft">Цену одного из своих размеров подтверждает менеджер — оставьте заявку на расчёт.</p>}
-        <p className="-mt-1 text-xs text-ink-soft">
-          {paymentsEnabled ? "Оплата картой или СБП на защищённой странице Ozon Pay." : "Ссылку на оплату картой или СБП пришлём после проверки заказа."}{" "}
-          <Link href="/oferta" className="underline underline-offset-2">Оферта</Link> ·{" "}
-          <Link href="/returns" className="underline underline-offset-2">Возврат и обмен</Link>
-        </p>
-        <PaymentBadges compact className="text-ink-soft" />
+        {needsQuote ? (
+          <>
+            <button type="submit" name="intent" value="lead" disabled={sending} className="btn btn-strap min-h-14 w-full text-lg disabled:opacity-60">
+              {sending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Send className="size-5" aria-hidden />}
+              Отправить заявку
+            </button>
+            <p className="-mt-1 text-sm text-ink-soft">
+              Окна шьём по заявке: менеджер свяжется, уточнит размеры, крепление и сроки, назовёт итоговую цену и пришлёт ссылку на оплату. Предоплата сейчас не нужна.
+            </p>
+          </>
+        ) : (
+          <>
+            <button type="submit" name="intent" value="pay" disabled={sending} className="btn btn-strap min-h-14 w-full text-lg disabled:cursor-not-allowed disabled:opacity-50">
+              {sending && status.intent === "pay" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CreditCard className="size-5" aria-hidden />}
+              Оформить и оплатить
+            </button>
+            <p className="-mt-1 text-xs text-ink-soft">
+              {paymentsEnabled ? "Оплата картой или СБП на защищённой странице Ozon Pay." : "Ссылку на оплату картой или СБП пришлём после проверки заказа."}{" "}
+              <Link href="/oferta" className="underline underline-offset-2">Оферта</Link> ·{" "}
+              <Link href="/returns" className="underline underline-offset-2">Возврат и обмен</Link>
+            </p>
+            <PaymentBadges compact className="text-ink-soft" />
 
-        <div className="seam text-line" />
-        <button type="submit" name="intent" value="lead" disabled={sending} className="flex items-center justify-center gap-2 text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline disabled:opacity-60">
-          {sending && status.intent === "lead" && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          Нужен расчёт? <span className="font-semibold text-oxford">Оставить заявку менеджеру</span>
-        </button>
+            <div className="seam text-line" />
+            <button type="submit" name="intent" value="lead" disabled={sending} className="flex items-center justify-center gap-2 text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline disabled:opacity-60">
+              {sending && status.intent === "lead" && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              Нужен расчёт? <span className="font-semibold text-oxford">Оставить заявку менеджеру</span>
+            </button>
+          </>
+        )}
       </div>
     </form>
   );

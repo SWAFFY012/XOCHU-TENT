@@ -2,7 +2,7 @@ import "server-only";
 import { findVariant, getProduct, getSummary } from "@/lib/catalog";
 import { quoteDelivery, toParcels } from "@/lib/delivery";
 import { estimateWeight, priceCustom } from "@/lib/format";
-import { customQuoteOnly, deliveryPayment, deliveryServices } from "@/lib/site";
+import { deliveryPayment, deliveryServices, isQuoteOnly } from "@/lib/site";
 import type { ContactMethod, Order, OrderDelivery, OrderItem } from "./types";
 
 /** Что присылает корзина. Цены и веса не принимаем — считаем по прайсу. */
@@ -68,7 +68,7 @@ export async function buildOrder(body: CheckoutBody, ip: string): Promise<Omit<O
 
   const items = resolveItems(body.items);
   if (kind === "order" && items.some((i) => i.quote)) {
-    throw new CheckoutError("Цену одного из своих размеров подтверждает менеджер — оставьте заявку на расчёт.");
+    throw new CheckoutError("Часть товаров оформляется заявкой: детали и цену согласует менеджер. Нажмите «Отправить заявку».");
   }
 
   const itemsTotal = items.reduce((s, i) => s + i.price * i.qty, 0);
@@ -175,7 +175,7 @@ export function resolveItems(lines: CartLine[] | undefined): OrderItem[] {
       color: it.color,
       size,
       custom: Boolean(it.custom),
-      quote: Boolean(it.custom) && customQuoteOnly.includes(p.slug),
+      quote: isQuoteOnly(p.slug, Boolean(it.custom)),
       qty,
       price,
       weight,
