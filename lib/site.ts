@@ -16,8 +16,8 @@ export const site = {
   phone: "+7 (988) 418-68-86",
   phoneHref: "tel:+79884186886",
   email: "xochu.tent@mail.ru",
-  telegram: "https://t.me/hochutent", // TODO
-  whatsapp: "https://wa.me/79000000000", // TODO
+  telegram: "https://t.me/tentgroup1",
+  whatsapp: "https://wa.me/79000000000", // TODO: номер WhatsApp — заказчик пришлёт
   ozon: "https://www.ozon.ru/seller/hochutent/",
   city: "Янино-1",
   region: "Ленинградская область",
@@ -36,7 +36,7 @@ export const site = {
   yandexVerification: "", // TODO: код из Яндекс Вебмастера
   // Цифры с витрины Ozon (на 11.10.2026). Обновляйте вручную.
   ozonStats: { rating: "4,9", reviews: "5 246", orders: "13,1 тыс." },
-  productionDays: "1–3 рабочих дня", // TODO: реальный срок пошива
+  productionDays: "1–3 рабочих дня",
   responseTime: "15 минут", // менеджер перезванивает в рабочее время
   foundedYear: 2019, // TODO
   workshopArea: "600 м²", // TODO

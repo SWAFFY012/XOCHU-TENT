@@ -98,7 +98,7 @@ export function CartClient() {
     if (pay ? !/\S{2,}\s+\S{2,}/.test(form.name) : form.name.length < 2) errs.name = pay ? "Укажите фамилию и имя получателя." : "Укажите имя.";
     if (phone.replace(/\D/g, "").length !== 11) errs.phone = "Введите телефон полностью: +7 (900) 000-00-00.";
     if (form.email ? !EMAIL_RE.test(form.email) : pay) errs.email = "Укажите email — на него придёт электронный чек.";
-    if (contact === "telegram" && !TG_RE.test(form.telegram)) errs.telegram = "Укажите ник в Telegram, например @hochutent.";
+    if (contact === "telegram" && !TG_RE.test(form.telegram)) errs.telegram = "Укажите ник в Telegram, например @username.";
     if (delivery === "carrier") {
       const post = form.service === "post";
       if (form.city!.length < 2) errs.city = "Укажите город.";
