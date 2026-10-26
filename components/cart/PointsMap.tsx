@@ -46,8 +46,20 @@ function loadYmaps() {
 const PRESET = "islands#blueCircleDotIcon";
 const PRESET_ACTIVE = "islands#redDotIcon";
 
-/** Карта пунктов выдачи: клик по метке выбирает пункт. */
-export function PointsMap({ points, selected, onSelect }: { points: DeliveryPoint[]; selected?: string; onSelect: (p: DeliveryPoint) => void }) {
+/** Карта на JS API Яндекс Карт (без рекламной полосы встроенного виджета): клик по метке выбирает пункт. */
+export function PointsMap({
+  points,
+  selected,
+  onSelect,
+  className = "h-64 md:h-80",
+  label = "Карта пунктов выдачи",
+}: {
+  points: DeliveryPoint[];
+  selected?: string;
+  onSelect: (p: DeliveryPoint) => void;
+  className?: string;
+  label?: string;
+}) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<YMap | null>(null);
   const marks = useRef(new Map<string, YPlacemark>());
@@ -113,5 +125,5 @@ export function PointsMap({ points, selected, onSelect }: { points: DeliveryPoin
   );
 
   if (failed) return null;
-  return <div ref={el} className="h-64 overflow-hidden rounded-2xl bg-[#e1e6dd] md:h-80" role="application" aria-label="Карта пунктов выдачи" />;
+  return <div ref={el} className={`overflow-hidden rounded-2xl bg-[#e1e6dd] ${className}`} role="application" aria-label={label} />;
 }

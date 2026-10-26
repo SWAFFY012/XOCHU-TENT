@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Trash2 } from "lucide-react";
 import { DeliveryPicker } from "@/components/cart/DeliveryPicker";
+import { ShopMap } from "@/components/ShopMap";
 import { ProductArt } from "@/components/ProductArt";
 import { PaymentBadges } from "@/components/PaymentBadges";
 import { cartTotal, cartWeight, useCart, useHydrated } from "@/lib/cart";
@@ -39,8 +40,6 @@ function maskPhone(raw: string) {
   if (p[3]) s += `-${p[3]}`;
   return s;
 }
-
-const mapSrc = `https://yandex.ru/map-widget/v1/?ll=${site.map.lon}%2C${site.map.lat}&z=14&pt=${site.map.lon}%2C${site.map.lat}%2Cpm2rdm`;
 
 export function CartClient() {
   const router = useRouter();
@@ -324,9 +323,7 @@ export function CartClient() {
                   <b className="font-semibold">Бесплатно.</b> {site.address}. {site.hours}.
                 </span>
               </p>
-              <div className="relative h-56 overflow-hidden rounded-2xl bg-[#e1e6dd] md:h-64">
-                <iframe src={mapSrc} title="Производство «Хочу Тент» на карте" loading="lazy" className="absolute inset-0 h-full w-full border-0" allowFullScreen />
-              </div>
+              <ShopMap className="h-56 md:h-64" />
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <p className="max-w-[46ch] text-ink-soft">
                   Сообщим о готовности по SMS, в Telegram или на почту — срок до {site.pickupReadyDays} рабочих дней.

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Clock3, CreditCard, Mail, MapPin, MessageCircle, Navigation, Phone, Send, Truck, Warehouse } from "lucide-react";
+import { ShopMap } from "@/components/ShopMap";
 import { deliveryServices, routeUrl, site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -80,14 +81,8 @@ export default function ContactsPage() {
         </div>
 
         <div className="min-h-[24rem] overflow-hidden rounded-[28px] bg-paper">
-          {/* карточка организации «ХОЧУТЕНТ» из Яндекс Карт: отзывы, маршрут, часы работы */}
-          <iframe
-            title="«Хочу Тент» на Яндекс Картах"
-            src={`https://yandex.ru/map-widget/v1/?ll=${lon}%2C${lat}&mode=search&oid=${site.yandexOrgId}&ol=biz&z=15`}
-            className="h-full min-h-[24rem] w-full border-0"
-            loading="lazy"
-            allowFullScreen
-          />
+          {/* своя карта на JS API: у встроенного виджета Яндекса снизу реклама конкурентов */}
+          <ShopMap className="h-full min-h-[24rem] rounded-none" />
         </div>
       </div>
 
