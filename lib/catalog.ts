@@ -2,13 +2,17 @@ import "server-only";
 import raw from "@/data/products.json";
 import { productCopy } from "./content";
 import { cardFrames, getMedia } from "./media";
+import { priceCustom } from "./format";
 import { customPricePerM2 } from "./site";
 import type { CompactVariants, Product, ProductSummary } from "./types";
 
 // Полный массив вариантов живёт только на сервере.
 const products = (raw as unknown as Product[]).map(withCustomPrices);
 
-/** Цена м² своего размера из прайса заказчика (lib/site.ts) вместо медианы цен Ozon. */
+/**
+ * Прайс заказчика (lib/site.ts) вместо цен Ozon: цена м² для своего размера
+ * и пересчёт готовых размеров из списка — площадь × цена м², как у своего размера.
+ */
 function withCustomPrices(p: Product): Product {
   const set = customPricePerM2[p.slug];
   if (set === undefined) return p;
@@ -18,7 +22,16 @@ function withCustomPrices(p: Product): Product {
   const vals = Object.values(pricePerM2ByOption).sort((a, b) => a - b);
   const mid = vals.length >> 1;
   const pricePerM2Median = Math.round(vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2);
-  return { ...p, pricePerM2ByOption, pricePerM2Median };
+  const variants = p.variants.map((v) => ({ ...v, price: priceCustom(v.area, pricePerM2ByOption[v.option]) }));
+  const prices = variants.map((v) => v.price);
+  return {
+    ...p,
+    variants,
+    priceFrom: Math.min(...prices),
+    priceTo: Math.max(...prices),
+    pricePerM2ByOption,
+    pricePerM2Median,
+  };
 }
 
 export function getAllSummaries(): ProductSummary[] {

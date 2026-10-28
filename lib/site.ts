@@ -73,12 +73,14 @@ export const customQuoteOnly: readonly string[] = [];
 export const quoteOnlyProducts: readonly string[] = ["myagkoe-okno", "myagkoe-okno-tonirovannoe"];
 
 /**
- * Цена 1 м² для своего размера — прайс заказчика (28.10.2026), а не медиана цен Ozon.
- * Действует в калькуляторе, конфигураторе, «≈ за м²» и при проверке заказа на сервере.
+ * Цена 1 м² — прайс заказчика (28.10.2026) вместо цен Ozon из data/prices.xlsx.
+ * По ней считаются и свой размер, и готовые размеры из списка (площадь × цена м², вверх до 10 ₽):
+ * калькулятор, карточки, «от … ₽», проверка заказа на сервере.
  * Число — для всех вариантов товара, объект — по вариантам (пропитка, люверсы).
- * Цены стандартных размеров по-прежнему из data/prices.xlsx.
  */
 export const customPricePerM2: Readonly<Record<string, number | Readonly<Record<string, number>>>> = {
+  "tent-oxford": 392, // TODO: заказчик уточнит правило «до 6×6 +10%, от 6×6 −10%»
+  "tent-pvh": 482,
   "myagkoe-okno": 1800,
   "myagkoe-okno-tonirovannoe": 2000,
   "shtora-pvh": 800,
