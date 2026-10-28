@@ -61,9 +61,9 @@ async function contactId(o: Order): Promise<number> {
 
 /**
  * Создаёт сделку по заказу. text — то же сообщение, что уходит менеджеру в Telegram.
- * Возвращает id сделки или null, если Битрикс не настроен или не ответил.
+ * Возвращает id сделки или текст ошибки — его сохраняем в заказе, логов сервера на хостинге нет.
  */
-export async function createBitrixDeal(o: Order, text: string): Promise<number | null> {
+export async function createBitrixDeal(o: Order, text: string): Promise<{ dealId: number } | { error: string } | null> {
   if (!bitrixReady()) return null;
   try {
     const contact = await contactId(o);
@@ -90,10 +90,11 @@ export async function createBitrixDeal(o: Order, text: string): Promise<number |
         QUANTITY: i.qty,
       })),
     }).catch((e) => console.error("[bitrix] товары не добавились", e));
-    return deal;
+    return { dealId: deal };
   } catch (e) {
     console.error("[bitrix]", e);
-    return null;
+    const cause = e instanceof Error && e.cause instanceof Error ? `: ${e.cause.message}` : "";
+    return { error: `${e instanceof Error ? e.message : String(e)}${cause}`.slice(0, 300) };
   }
 }
 

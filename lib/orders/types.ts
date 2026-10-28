@@ -98,7 +98,7 @@ export type Order = {
   total: number;
   payment: PaymentState;
   /** сделка в Битрикс24, созданная по заказу */
-  crm?: { bitrixDealId?: number };
+  crm?: { bitrixDealId?: number; bitrixError?: string };
   /** согласие с офертой и обработкой ПД — когда и с какого IP */
   consent: { offer: boolean; personalData: boolean; at: string; ip: string };
   history: { at: string; status: OrderStatus; note?: string }[];

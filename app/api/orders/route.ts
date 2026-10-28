@@ -75,16 +75,16 @@ export async function POST(req: Request) {
 
   const text = newOrderText(order, { saved, paymentUrl, paymentError });
   // Telegram пишет в консоль в разработке и молчит в продакшене без настроек — зовём его, только если Битрикс не настроен или Telegram задан
-  const [deal, toTelegram] = await Promise.all([
+  const [crm, toTelegram] = await Promise.all([
     createBitrixDeal(order, text),
     telegramReady() || !bitrixReady() ? notifyManager(text) : Promise.resolve(false),
   ]);
-  if (deal && saved) {
+  if (crm && saved) {
     await updateOrder(order.id, (o) => {
-      o.crm = { bitrixDealId: deal };
-    }).catch((e) => console.error("[orders] не записали id сделки", e));
+      o.crm = "dealId" in crm ? { bitrixDealId: crm.dealId } : { bitrixError: crm.error };
+    }).catch((e) => console.error("[orders] не записали результат Битрикс24", e));
   }
-  const notified = deal !== null || toTelegram;
+  const notified = (crm !== null && "dealId" in crm) || toTelegram;
   if (!saved && !notified) {
     return NextResponse.json({ error: "Заказ не отправился." }, { status: 502 });
   }
