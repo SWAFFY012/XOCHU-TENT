@@ -72,6 +72,21 @@ export const customQuoteOnly: readonly string[] = [];
  */
 export const quoteOnlyProducts: readonly string[] = ["myagkoe-okno", "myagkoe-okno-tonirovannoe"];
 
+/**
+ * Цена 1 м² для своего размера — прайс заказчика (28.10.2026), а не медиана цен Ozon.
+ * Действует в калькуляторе, конфигураторе, «≈ за м²» и при проверке заказа на сервере.
+ * Число — для всех вариантов товара, объект — по вариантам (пропитка, люверсы).
+ * Цены стандартных размеров по-прежнему из data/prices.xlsx.
+ */
+export const customPricePerM2: Readonly<Record<string, number | Readonly<Record<string, number>>>> = {
+  "myagkoe-okno": 1800,
+  "myagkoe-okno-tonirovannoe": 2000,
+  "shtora-pvh": 800,
+  "shtora-oxford": 750,
+  "shtora-brezent": 800,
+  "tent-brezent": { "ВО — водоупорная": 460, "СКПВ — от гнили и плесени": 460, "ОП — огнеупорная": 450 },
+};
+
 /** Позиция оформляется заявкой, а не оплатой: окна целиком или свой размер из customQuoteOnly. */
 export const isQuoteOnly = (slug: string, custom: boolean) => quoteOnlyProducts.includes(slug) || (custom && customQuoteOnly.includes(slug));
 

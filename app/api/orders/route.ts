@@ -4,6 +4,7 @@ import { newOrderText } from "@/lib/orders/messages";
 import { createOrder, updateOrder } from "@/lib/orders/store";
 import type { Order } from "@/lib/orders/types";
 import { notifyManager, telegramReady } from "@/lib/notify/telegram";
+import { bitrixReady, createBitrixDeal } from "@/lib/notify/bitrix";
 import { adminEnabled } from "@/lib/admin-auth";
 import { buildPaymentRequest, createPayment } from "@/lib/payments/ozonpay";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -14,7 +15,7 @@ const limited = rateLimit(5, 10 * 60_000);
 
 /**
  * Оформление заказа (intent "pay") или заявки на расчёт (intent "lead").
- * Заказ сохраняется, менеджер получает его в Telegram; при включённой оплате
+ * Заказ сохраняется, менеджер получает его сделкой в Битрикс24 и/или в Telegram; при включённой оплате
  * в ответе приходит ссылка на платёжную форму Ozon Pay.
  */
 export async function POST(req: Request) {
@@ -23,9 +24,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Слишком много заказов подряд. Попробуйте через 10 минут." }, { status: 429 });
   }
 
-  // Менеджер не узнает о заказе ни из Telegram, ни из /admin — не принимаем, чтобы заказ не потерялся
-  if (process.env.NODE_ENV === "production" && !telegramReady() && !adminEnabled()) {
-    console.error("[orders] не настроены ни TELEGRAM_*, ни ADMIN_PASSWORD");
+  // Менеджер не узнает о заказе ни из Битрикс24, ни из Telegram, ни из /admin — не принимаем, чтобы заказ не потерялся
+  if (process.env.NODE_ENV === "production" && !bitrixReady() && !telegramReady() && !adminEnabled()) {
+    console.error("[orders] не настроены ни BITRIX_WEBHOOK_URL, ни TELEGRAM_*, ни ADMIN_PASSWORD");
     return NextResponse.json({ error: "Приём заказов временно не работает." }, { status: 503 });
   }
 
@@ -72,7 +73,18 @@ export async function POST(req: Request) {
     }
   }
 
-  const notified = await notifyManager(newOrderText(order, { saved, paymentUrl, paymentError }));
+  const text = newOrderText(order, { saved, paymentUrl, paymentError });
+  // Telegram пишет в консоль в разработке и молчит в продакшене без настроек — зовём его, только если Битрикс не настроен или Telegram задан
+  const [deal, toTelegram] = await Promise.all([
+    createBitrixDeal(order, text),
+    telegramReady() || !bitrixReady() ? notifyManager(text) : Promise.resolve(false),
+  ]);
+  if (deal && saved) {
+    await updateOrder(order.id, (o) => {
+      o.crm = { bitrixDealId: deal };
+    }).catch((e) => console.error("[orders] не записали id сделки", e));
+  }
+  const notified = deal !== null || toTelegram;
   if (!saved && !notified) {
     return NextResponse.json({ error: "Заказ не отправился." }, { status: 502 });
   }
