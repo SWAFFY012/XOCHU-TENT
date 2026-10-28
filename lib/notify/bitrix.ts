@@ -27,9 +27,14 @@ async function call<T>(method: string, params: unknown): Promise<T> {
   return data.result as T;
 }
 
-/** Текст для Telegram (HTML) → BB-коды комментария Битрикс24. */
+/**
+ * Текст для Telegram (HTML) → BB-коды комментария Битрикс24.
+ * Эмодзи убираем: Битрикс24 обрезает текст на первом символе вне BMP, и комментарий остаётся пустым.
+ */
 const toBb = (html: string) =>
   html
+    .replace(/[\u{10000}-\u{10FFFF}]\uFE0F?|\uFE0F/gu, "")
+    .replace(/^[ \t]+(?=\S)/gm, (m) => (m.length > 1 ? m : ""))
     .replace(/<b>/g, "[B]")
     .replace(/<\/b>/g, "[/B]")
     .replace(/<[^>]+>/g, "")
