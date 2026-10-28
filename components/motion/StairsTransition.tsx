@@ -21,11 +21,15 @@ const variants: Variants = {
 // поэтому на сервере всегда null: первая загрузка и гидратация рисуют одно и то же — ничего.
 let lastPath: string | null = null;
 
+// Карточка товара открывается шторкой поверх страницы (перехваченный маршрут): «ступени» тут не нужны,
+// иначе пять полос во весь экран перекрывают шторку при каждом открытии и закрытии
+const isProduct = (p: string | null) => !!p && /^\/catalog\/[^/]+$/.test(p);
+
 export function StairsTransition() {
   const reduce = useReducedMotion();
   const path = usePathname();
   // Показываем только при настоящем переходе: прошлый адрес известен и отличается от текущего
-  const [show] = useState(() => lastPath !== null && lastPath !== path);
+  const [show] = useState(() => lastPath !== null && lastPath !== path && !isProduct(lastPath) && !isProduct(path));
   const [done, setDone] = useState(false);
 
   useEffect(() => {

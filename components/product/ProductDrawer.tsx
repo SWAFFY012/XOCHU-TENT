@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { useMediaQuery } from "@/lib/hooks";
 
@@ -22,28 +22,50 @@ export function ProductDrawer({ children }: { children: ReactNode }) {
   const reduce = useReducedMotion();
   const drag = useDragControls();
 
-  const close = useCallback(() => setOpen(false), []);
+  // Закрытие запущено этой шторкой: шаг назад делаем один раз, после анимации
+  const closing = useRef(false);
+
+  const close = useCallback(() => {
+    closing.current = true;
+    setOpen(false);
+  }, []);
+
+  // Next.js (Cache Components) не размонтирует ушедшую страницу, а прячет её в <Activity>
+  // вместе с состоянием. Без сброса шторка вернулась бы закрытой, но с заблокированной прокруткой.
+  useLayoutEffect(
+    () => () => {
+      closing.current = false;
+      setOpen(true);
+    },
+    [],
+  );
 
   useEffect(() => {
     // После ухода со страницы очистка предыдущего запуска вернёт прокрутку
-    if (away) return;
-    const prev = document.body.style.overflow;
+    if (away || !open) return;
     document.body.style.overflow = "hidden";
     panel.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      // Не восстанавливаем «прошлое» значение: при быстрой смене товаров им могло быть чужое hidden
+      document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
     };
-  }, [close, away]);
+  }, [close, away, open]);
 
   const offscreen = mobile ? { y: "100%" } : { x: "100%" };
 
   if (away) return null;
 
   return (
-    <AnimatePresence onExitComplete={() => router.back()}>
+    <AnimatePresence
+      onExitComplete={() => {
+        if (!closing.current) return;
+        closing.current = false;
+        router.back();
+      }}
+    >
       {open && (
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Карточка товара">
           <motion.button
