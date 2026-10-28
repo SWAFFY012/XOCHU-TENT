@@ -85,6 +85,9 @@ export const customPricePerM2: Readonly<Record<string, number | Readonly<Record<
   "shtora-oxford": 750,
   "shtora-brezent": 800,
   "tent-brezent": { "ВО — водоупорная": 460, "СКПВ — от гнили и плесени": 460, "ОП — огнеупорная": 450 },
+  // Ткани заказчик считает за погонный метр: цена м² = цена п. м / ширина рулона
+  "tkan-brezent": 300 / 0.9,
+  "tkan-oxford": 320 / 1.5,
 };
 
 /** Позиция оформляется заявкой, а не оплатой: окна целиком или свой размер из customQuoteOnly. */

@@ -96,3 +96,15 @@ export async function createBitrixDeal(o: Order, text: string): Promise<number |
     return null;
   }
 }
+
+/** Комментарий в ленту сделки, например «Заказ оплачен». */
+export async function commentBitrixDeal(dealId: number, text: string): Promise<boolean> {
+  if (!bitrixReady()) return false;
+  try {
+    await call("crm.timeline.comment.add", { fields: { ENTITY_ID: dealId, ENTITY_TYPE: "deal", COMMENT: toBb(text) } });
+    return true;
+  } catch (e) {
+    console.error("[bitrix]", e);
+    return false;
+  }
+}

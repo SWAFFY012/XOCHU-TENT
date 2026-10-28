@@ -1,54 +1,57 @@
 import "server-only";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { site } from "@/lib/site";
 import type { Order } from "@/lib/orders/types";
 
 /**
- * Интернет-эквайринг Ozon Pay (оплата картой и СБП, чек 54-ФЗ формирует Ozon Pay).
- *
- * Формат запросов и подписи здесь НЕ реализован: открытой документации Ozon Pay нет,
- * её выдают после подключения. Всё, что зависит от неё, помечено TODO — заполните
- * по документации из кабинета Ozon Pay, ничего не придумывая.
+ * Интернет-эквайринг Ozon Pay Checkout (карта, СБП, Ozon Карта; чек 54-ФЗ формирует Ozon).
+ * Документация: https://docs.ozon.ru/api/acquiring/ — /v1/createOrder и POST-уведомления.
  *
  * Ключи только из env (в репозиторий не коммитить):
- *   OZONPAY_API_URL      — адрес API из документации
- *   OZONPAY_ACCESS_KEY   — идентификатор/ключ доступа магазина
- *   OZONPAY_SECRET_KEY   — секрет для подписи запросов
- *   OZONPAY_WEBHOOK_SECRET — секрет для проверки уведомлений (если отличается от SECRET_KEY)
+ *   OZONPAY_ACCESS_KEY     — идентификатор токена из кабинета эквайринга
+ *   OZONPAY_SECRET_KEY     — секретный ключ токена: подпись запросов
+ *   OZONPAY_WEBHOOK_SECRET — секретный ключ для уведомлений: проверка их подписи
+ *   OZONPAY_API_URL        — по умолчанию https://payapi.ozon.ru
+ *   OZONPAY_VAT            — ставка НДС в чеке, по умолчанию VAT_NONE (ИП на упрощёнке)
+ *   OZONPAY_TEST_MODE=true — принимать уведомления тестового токена как оплату
  */
 const env = {
-  apiUrl: process.env.OZONPAY_API_URL ?? "",
+  apiUrl: (process.env.OZONPAY_API_URL || "https://payapi.ozon.ru").replace(/\/+$/, ""),
   accessKey: process.env.OZONPAY_ACCESS_KEY ?? "",
   secretKey: process.env.OZONPAY_SECRET_KEY ?? "",
-  webhookSecret: process.env.OZONPAY_WEBHOOK_SECRET || process.env.OZONPAY_SECRET_KEY || "",
+  webhookSecret: process.env.OZONPAY_WEBHOOK_SECRET ?? "",
+  vat: process.env.OZONPAY_VAT || "VAT_NONE",
+  testMode: process.env.OZONPAY_TEST_MODE === "true",
 };
 
-export const ozonPayConfigured = () => Boolean(env.apiUrl && env.accessKey && env.secretKey);
+const RUB = "643";
+const FISCAL = "FISCAL_TYPE_SINGLE";
+const ALGO = "PAY_ALGO_SMS";
+
+export const ozonPayConfigured = () => Boolean(env.accessKey && env.secretKey);
 
 export class PaymentNotConfigured extends Error {
   constructor(what: string) {
-    super(`Ozon Pay: ${what} не реализовано — см. TODO в lib/payments/ozonpay.ts`);
+    super(`Ozon Pay: ${what}`);
   }
 }
 
-/** Позиция чека 54-ФЗ в нейтральном виде; в формат Ozon Pay переводится в toProviderReceipt(). */
+const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
+
+/** Позиция чека: цена за единицу в копейках. */
 export type ReceiptItem = {
   name: string;
-  /** цена за единицу, копейки */
   price: number;
   quantity: number;
-  /** ИП на упрощёнке: «без НДС» */
-  vat: "none";
-  /** признак предмета расчёта: товар */
-  paymentObject: "commodity";
-  /** способ расчёта: полная предоплата */
-  paymentMethod: "full_prepayment";
+  type: "TYPE_PRODUCT" | "TYPE_SERVICE";
+  extId: string;
+  attributes?: { color?: string; size?: string };
 };
 
 export type PaymentRequest = {
   orderId: string;
-  /** сумма, копейки */
+  /** сумма, копейки; равна сумме позиций */
   amount: number;
-  description: string;
   customer: { email: string; phone: string };
   receipt: ReceiptItem[];
   successUrl: string;
@@ -66,26 +69,17 @@ export function buildPaymentRequest(order: Order): PaymentRequest {
     name: receiptName(i),
     price: Math.round(i.price * 100),
     quantity: i.qty,
-    vat: "none",
-    paymentObject: "commodity",
-    paymentMethod: "full_prepayment",
+    type: "TYPE_PRODUCT",
+    extId: i.slug,
+    attributes: { color: i.color, size: i.size },
   }));
   // доставка в чек — только если оплачивается вместе с заказом (deliveryPayment = "with_order")
   if (order.delivery.method === "carrier" && order.delivery.cost && order.total > order.itemsTotal) {
-    receipt.push({
-      name: "Доставка",
-      price: Math.round(order.delivery.cost * 100),
-      quantity: 1,
-      vat: "none",
-      // TODO: для доставки признак предмета — «услуга»; уточнить код в документации Ozon Pay
-      paymentObject: "commodity",
-      paymentMethod: "full_prepayment",
-    });
+    receipt.push({ name: "Доставка", price: Math.round(order.delivery.cost * 100), quantity: 1, type: "TYPE_SERVICE", extId: "delivery" });
   }
   return {
     orderId: order.id,
-    amount: Math.round(order.total * 100),
-    description: `Заказ №${order.id} в «${site.name}»`,
+    amount: receipt.reduce((s, r) => s + r.price * r.quantity, 0),
     customer: { email: order.customer.email, phone: order.customer.phone },
     receipt,
     successUrl: `${site.url}/order/success?order=${order.id}`,
@@ -95,39 +89,108 @@ export function buildPaymentRequest(order: Order): PaymentRequest {
 }
 
 /**
- * Создаёт платёж и возвращает ссылку на платёжную форму Ozon Pay.
- * TODO: реализовать по документации Ozon Pay:
- *   1. эндпоинт создания заказа/платежа (env.apiUrl + путь из документации);
- *   2. перевод PaymentRequest в формат API (поля суммы, валюты, чека, покупателя);
- *   3. подпись запроса по алгоритму из документации (env.accessKey, env.secretKey);
- *   4. из ответа взять id платежа и URL платёжной формы.
+ * extId в Ozon одноразовый: номер заказа + метка времени, чтобы повторная попытка
+ * или номер, начатый заново после потери .data, не упирались в «уже создан».
  */
+const toExtId = (orderId: string) => `${orderId}-${Date.now().toString(36)}`;
+const fromExtId = (extId: string) => extId.replace(/-[0-9a-z]+$/, "");
+
+/** Создаёт заказ в Ozon Pay и возвращает его id и ссылку на платёжную форму. */
 export async function createPayment(req: PaymentRequest): Promise<{ paymentId: string; url: string }> {
-  if (!ozonPayConfigured()) throw new PaymentNotConfigured("ключи OZONPAY_* не заданы, создание платежа");
-  void req;
-  throw new PaymentNotConfigured("создание платежа");
+  if (!ozonPayConfigured()) throw new PaymentNotConfigured("не заданы OZONPAY_ACCESS_KEY и OZONPAY_SECRET_KEY");
+  const extId = toExtId(req.orderId);
+  const value = String(req.amount);
+  const body = {
+    accessKey: env.accessKey,
+    extId,
+    amount: { currencyCode: RUB, value },
+    paymentAlgorithm: ALGO,
+    mode: "MODE_FULL",
+    enableFiscalization: true,
+    fiscalizationType: FISCAL,
+    ...(req.customer.email && { receiptEmail: req.customer.email }),
+    fiscalizationPhone: req.customer.phone.replace(/\D/g, ""),
+    items: req.receipt.map((r) => ({
+      name: r.name,
+      extId: r.extId,
+      quantity: r.quantity,
+      price: { currencyCode: RUB, value: String(r.price) },
+      type: r.type,
+      vat: env.vat,
+      needMark: false,
+      ...(r.attributes && { attributes: r.attributes }),
+    })),
+    successUrl: req.successUrl,
+    failUrl: req.failUrl,
+    notificationUrl: req.notificationUrl,
+    // порядок полей подписи createOrder: accessKey, expiresAt (пусто), extId, fiscalizationType, paymentAlgorithm, валюта, сумма, secretKey
+    requestSign: sha256(`${env.accessKey}${extId}${FISCAL}${ALGO}${RUB}${value}${env.secretKey}`),
+  };
+
+  const res = await fetch(`${env.apiUrl}/v1/createOrder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const data = (await res.json().catch(() => ({}))) as { order?: { id?: string; payLink?: string }; code?: number; message?: string };
+  if (!res.ok || !data.order?.id || !data.order.payLink) {
+    throw new Error(`Ozon Pay createOrder: ${res.status} ${data.message ?? ""}`.trim());
+  }
+  return { paymentId: data.order.id, url: data.order.payLink };
 }
 
 export type PaymentEvent = {
-  /** уникальный id уведомления или платежа — по нему отсекаем повторы */
+  /** уникальный id попытки оплаты — по нему отсекаем повторы */
   eventId: string;
+  /** id заказа на стороне Ozon */
   paymentId: string;
+  /** номер заказа на сайте */
   orderId: string;
-  status: "paid" | "failed" | "refunded" | "pending";
+  status: "paid" | "failed" | "pending";
   /** сумма, копейки — сверяем с заказом */
   amount: number;
 };
 
+type Notification = {
+  orderID?: string;
+  extOrderID?: string;
+  transactionID?: number | null;
+  transactionUID?: string;
+  transactionUid?: string;
+  amount?: number;
+  currencyCode?: string;
+  testMode?: number;
+  status?: string;
+  requestSign?: string;
+};
+
+const STATUS: Record<string, PaymentEvent["status"]> = { Completed: "paid", Rejected: "failed", Authorized: "pending" };
+
 /**
- * Проверяет подпись уведомления и разбирает его.
- * TODO: реализовать по документации Ozon Pay: где лежит подпись (заголовок или поле),
- * как она считается (алгоритм, порядок полей, env.webhookSecret), какие статусы приходят.
- * Сравнение подписи — только через crypto.timingSafeEqual.
- * Пока не реализовано, возвращает null — уведомление отклоняется.
+ * Проверяет подпись уведомления о попытке оплаты заказа и разбирает его. Неверная подпись — null.
+ * Подпись: SHA256("{accessKey}|{orderID}|{transactionID или transactionUID}|{extOrderID}|{amount}|{currencyCode}|{секрет уведомлений}").
  */
-export function parseWebhook(rawBody: string, headers: Headers): PaymentEvent | null {
-  void rawBody;
-  void headers;
-  if (!env.webhookSecret) return null;
-  return null;
+export function parseWebhook(rawBody: string): PaymentEvent | null {
+  if (!env.accessKey || !env.webhookSecret) return null;
+  let n: Notification;
+  try {
+    n = JSON.parse(rawBody);
+  } catch {
+    return null;
+  }
+  const uid = n.transactionUID ?? n.transactionUid ?? "";
+  const tx = n.transactionID ?? uid;
+  const expected = sha256([env.accessKey, n.orderID ?? "", tx, n.extOrderID ?? "", n.amount ?? "", n.currencyCode ?? "", env.webhookSecret].join("|"));
+  const got = Buffer.from(String(n.requestSign ?? "").toLowerCase());
+  if (got.length !== expected.length || !timingSafeEqual(got, Buffer.from(expected))) return null;
+
+  const status = STATUS[n.status ?? ""];
+  if (!status || !n.orderID || !n.extOrderID) return null;
+  // Тестовый токен не должен отмечать настоящие заказы оплаченными
+  if (n.testMode === 1 && !env.testMode && status === "paid") {
+    console.warn(`[ozonpay] тестовое уведомление по заказу ${n.extOrderID} пропущено (OZONPAY_TEST_MODE не включён)`);
+    return { eventId: `${uid || tx}:${n.status}`, paymentId: n.orderID, orderId: fromExtId(n.extOrderID), status: "pending", amount: Number(n.amount) };
+  }
+  return { eventId: `${uid || tx}:${n.status}`, paymentId: n.orderID, orderId: fromExtId(n.extOrderID), status, amount: Number(n.amount) };
 }

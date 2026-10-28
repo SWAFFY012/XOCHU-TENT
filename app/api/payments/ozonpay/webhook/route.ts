@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { paidText } from "@/lib/orders/messages";
 import { updateOrder } from "@/lib/orders/store";
-import { notifyManager } from "@/lib/notify/telegram";
+import { notifyManager, telegramReady } from "@/lib/notify/telegram";
+import { bitrixReady, commentBitrixDeal } from "@/lib/notify/bitrix";
 import { parseWebhook } from "@/lib/payments/ozonpay";
 
 /**
@@ -11,7 +12,7 @@ import { parseWebhook } from "@/lib/payments/ozonpay";
  */
 export async function POST(req: Request) {
   const raw = await req.text();
-  const event = parseWebhook(raw, req.headers);
+  const event = parseWebhook(raw);
   if (!event) return NextResponse.json({ error: "bad signature" }, { status: 401 });
 
   let becamePaid = false;
@@ -36,13 +37,20 @@ export async function POST(req: Request) {
         o.history.push({ at: now, status: "paid", note: `Ozon Pay, платёж ${event.paymentId}` });
       }
       becamePaid = true;
-    } else if (o.payment.status !== "paid" || event.status === "refunded") {
+    } else if (o.payment.status !== "paid") {
+      // неудачная попытка не отменяет уже прошедшую оплату (возвраты делаются в кабинете Ozon)
       o.payment.status = event.status;
     }
   });
 
   if (!order) return NextResponse.json({ error: "order not found" }, { status: 404 });
-  if (becamePaid) await notifyManager(paidText(order));
-  // TODO: формат ответа, который ждёт Ozon Pay (код/тело), — по документации
+  if (becamePaid) {
+    const text = paidText(order);
+    await Promise.all([
+      order.crm?.bitrixDealId ? commentBitrixDeal(order.crm.bitrixDealId, text) : null,
+      telegramReady() || !bitrixReady() ? notifyManager(text) : null,
+    ]);
+  }
+  // Формат ответа в документации не задан: Ozon достаточно кода 200
   return NextResponse.json({ ok: true });
 }
