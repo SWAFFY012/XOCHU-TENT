@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Alumni_Sans, Golos_Text, Jost, Manrope, Tektur } from "next/font/google";
+import { Alumni_Sans, Golos_Text, Jost, Manrope, Tektur, Unbounded } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
@@ -20,6 +20,14 @@ const tektur = Tektur({
   display: "swap",
 });
 
+// Широкий заголовок «О производстве» — по образцу icondetailing.ru (их Micradi без кириллицы)
+const unbounded = Unbounded({
+  variable: "--font-unbounded-src",
+  subsets: ["latin", "cyrillic"],
+  weight: ["600"],
+  display: "swap",
+});
+
 // Заголовок hero
 const manrope = Manrope({
   variable: "--font-manrope-src",
@@ -32,7 +40,7 @@ const manrope = Manrope({
 const jost = Jost({
   variable: "--font-jost-src",
   subsets: ["latin", "cyrillic"],
-  weight: ["400"],
+  weight: ["300", "400"],
   display: "swap",
 });
 
@@ -77,7 +85,7 @@ const orgLd = {
 
 export default function RootLayout({ children, modal }: LayoutProps<"/">) {
   return (
-    <html lang="ru" className={`${alumni.variable} ${golos.variable} ${tektur.variable} ${manrope.variable} ${jost.variable} antialiased`}>
+    <html lang="ru" className={`${alumni.variable} ${golos.variable} ${tektur.variable} ${manrope.variable} ${jost.variable} ${unbounded.variable} antialiased`}>
       <body className="flex min-h-dvh flex-col">
         <a href="#main" className="sr-only z-[70] rounded-full bg-strap px-4 py-2 focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
           К содержимому

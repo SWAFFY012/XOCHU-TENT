@@ -20,6 +20,7 @@
   --font-tektur: var(--font-tektur-src), var(--font-alumni), sans-serif;
   --font-manrope: var(--font-manrope-src), system-ui, sans-serif;
   --font-jost: var(--font-jost-src), "Futura", system-ui, sans-serif;
+  --font-wide: var(--font-unbounded-src), var(--font-alumni), sans-serif;
 
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-curtain: cubic-bezier(0.76, 0, 0.24, 1);

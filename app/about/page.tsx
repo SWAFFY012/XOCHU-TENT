@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Banknote, Building2, Clock3, CreditCard, Download, FileText, Factory, PackageCheck, Ruler, ShieldCheck, Truck } from "lucide-react";
+import type { ReactNode } from "react";
+import { Banknote, Building2, CalendarClock, Clock3, CreditCard, Download, FileText, Factory, Handshake, PackageCheck, Ruler, ShieldCheck, Truck, UserPlus, Wrench } from "lucide-react";
 import { SectionReveal } from "@/components/motion/SectionReveal";
 import Image from "next/image";
 import { deliveryServices, site } from "@/lib/site";
@@ -12,11 +13,21 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
 };
 
-const FACTS = [
+const contacts = (
+  <Link href="/contacts" className="text-tarp underline underline-offset-2">
+    «Контакты»
+  </Link>
+);
+
+const FACTS: { icon: typeof Factory; t: string; d: ReactNode }[] = [
   { icon: Factory, t: `Цех ${site.workshopArea}`, d: "Раскрой, сварка ПВХ и пошив в одном помещении. Не перепродаём чужие изделия." },
   { icon: Ruler, t: "Размер до сантиметра", d: "Шьём по вашим замерам, если стандартный размер не подходит." },
   { icon: Clock3, t: site.productionDays, d: "Срок пошива нестандартных изделий. Стандарт отгружаем со склада." },
-  { icon: PackageCheck, t: site.dailyOutput, d: "Справляемся с оптовыми заказами для строек, автопарков и турбаз." },
+  { icon: PackageCheck, t: site.dailyOutput, d: "Производим, упаковываем и отгружаем ежедневно в СЦ маркетплейсов и ТК." },
+  { icon: Handshake, t: "Дилерам и оптовикам", d: <>Информацию по сотрудничеству можно получить или предложить, связавшись с нами любым удобным способом из раздела {contacts}.</> },
+  { icon: Wrench, t: "Доп. услуги", d: "Выезд на замер и монтаж по индивидуальным заказам мягких окон и ПВХ-штор. Услуга действует в Санкт-Петербурге и Ленинградской области." },
+  { icon: CalendarClock, t: "График 7/7 без выходных", d: "С 8:00 до 20:00. Звоните, пишите или приезжайте к нам с ТЗ, чтобы оформить любой заказ." },
+  { icon: UserPlus, t: "Трудоустройство", d: <>Хотите к нам в команду? Свяжитесь с нами любым удобным способом из раздела {contacts}. Берём с опытом и без: всё покажем, расскажем и обучим.</> },
 ];
 
 const DELIVERY = [
@@ -42,8 +53,15 @@ export default function AboutPage() {
     <>
       <section className="wrap pt-24 pb-14 md:pt-32">
         <div className="flex flex-col gap-7">
-          <h1 className="max-w-[18ch] text-[clamp(4.2rem,10vw,12rem)]">Шьём тенты с {site.foundedYear} года</h1>
-          <p className="max-w-[60ch] text-xl leading-relaxed text-ink-soft md:text-2xl">
+          <div>
+            <h1 className="font-wide text-[clamp(1.75rem,6.2vw,6.5rem)] leading-[1.05] font-semibold tracking-[-0.01em] uppercase">
+              Производим шторы и&nbsp;тенты с&nbsp;{site.foundedYear}&nbsp;года
+            </h1>
+            <p className="font-jost mt-5 max-w-[40ch] text-xl leading-snug font-light md:mt-7 md:text-[1.75rem]">
+              А также изделия из различных материалов для любых целей и задач
+            </p>
+          </div>
+          <p className="max-w-[60ch] text-lg leading-relaxed text-ink-soft md:text-xl">
             {/* TODO: история компании */}
             «Хочу Тент» — мастерская с собственным раскроем, пошивом и сваркой ПВХ. На Ozon у нас рейтинг {site.ozonStats.rating} и
             {" "}{site.ozonStats.orders} заказов, а здесь можно заказать напрямую, в том числе нестандартный размер.
