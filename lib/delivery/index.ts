@@ -1,14 +1,11 @@
 import "server-only";
 import { deliveryServices, type DeliveryServiceId } from "@/lib/site";
 import { cdek } from "./cdek";
-import { dellin } from "./dellin";
 import { checkLimits } from "./limits";
 import { ozon } from "./ozon";
-import { pek } from "./pek";
-import { post } from "./pochta";
 import type { DeliveryOption, DeliveryProvider, DeliveryQuery } from "./types";
 
-export const deliveryProviders: Record<DeliveryServiceId, DeliveryProvider> = { cdek, post, ozon, dellin, pek };
+export const deliveryProviders: Record<DeliveryServiceId, DeliveryProvider> = { cdek, ozon };
 
 /**
  * Варианты доставки всеми службами: ограничения по весу и габаритам, затем расчёт по API.

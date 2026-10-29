@@ -8,7 +8,7 @@ import { deliveryServices, site } from "@/lib/site";
 import { PointsMap } from "./PointsMap";
 
 export type CartLine = { slug: string; option: string; color: string; size: string; qty: number; custom: boolean };
-type Errors = Partial<Record<"city" | "address" | "postalCode" | "point" | "service", string>>;
+type Errors = Partial<Record<"city" | "address" | "point" | "service", string>>;
 
 const serviceOf = (id: string) => deliveryServices.find((s) => s.id === id)!;
 const optionKey = (o: Pick<DeliveryOption, "service" | "mode">) => `${o.service}:${o.mode}`;
@@ -23,7 +23,6 @@ const fallbackOptions: DeliveryOption[] = deliveryServices.flatMap((s) => s.mode
  */
 export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[]; errors: Errors; onOption: (o: DeliveryOption | null) => void }) {
   const [city, setCity] = useState("");
-  const [postalCode, setPostalCode] = useState("");
   const [options, setOptions] = useState<DeliveryOption[] | null>(null);
   const [calc, setCalc] = useState<{ state: "idle" | "loading" } | { state: "error"; message: string }>({ state: "idle" });
   const [key, setKey] = useState("");
@@ -38,7 +37,7 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
 
   useEffect(() => onOption(selected), [selected, onOption]);
 
-  // Стоимость всеми службами: пересчитываем, когда покупатель перестал печатать город или индекс
+  // Стоимость всеми службами: пересчитываем, когда покупатель перестал печатать город
   useEffect(() => {
     const c = city.trim();
     if (c.length < 2) return;
@@ -49,7 +48,7 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
         const res = await fetch("/api/delivery/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ city: c, postalCode, items: JSON.parse(linesKey) }),
+          body: JSON.stringify({ city: c, items: JSON.parse(linesKey) }),
           signal: ctrl.signal,
         });
         const data = await res.json().catch(() => ({}));
@@ -66,10 +65,10 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [city, postalCode, linesKey]);
+  }, [city, linesKey]);
 
   // Пункты выдачи выбранной службы в городе
-  const needPoints = selected?.mode === "pvz" && selected.service !== "post" && selected.service !== "ozon";
+  const needPoints = selected?.mode === "pvz" && selected.service !== "ozon";
   const pointsKey = needPoints ? `${service}|${city.trim().toLowerCase()}|${linesKey}` : "";
   const pointsLoading = !!pointsKey && points.key !== pointsKey;
   useEffect(() => {
@@ -98,42 +97,26 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
   }, [points.list, query]);
 
   const hasPoints = needPoints && !pointsLoading && points.list.length > 0;
-  // адрес текстом: до двери, Почтой и до пункта, если пунктов службы не загрузили (нет ключей API)
+  // адрес текстом: до двери и до пункта, если пунктов службы не загрузили (нет ключей API)
   const needAddress = selected && !hasPoints && !pointsLoading;
   const available = list.filter((o) => !o.unavailable);
   const blocked = list.filter((o) => o.unavailable);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-[1.6fr_1fr]">
-        <Field id="city" label="Город" error={errors.city}>
-          <input
-            id="f-city"
-            name="city"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            autoComplete="address-level2"
-            placeholder="Казань"
-            className="field min-h-11 py-2"
-            aria-invalid={!!errors.city}
-            aria-describedby="e-city"
-          />
-        </Field>
-        <Field id="postalCode" label="Индекс" hint="для Почты" error={errors.postalCode}>
-          <input
-            id="f-postalCode"
-            name="postalCode"
-            value={postalCode}
-            onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            inputMode="numeric"
-            autoComplete="postal-code"
-            placeholder="420111"
-            className="field min-h-11 py-2"
-            aria-invalid={!!errors.postalCode}
-            aria-describedby="e-postalCode"
-          />
-        </Field>
-      </div>
+      <Field id="city" label="Город" error={errors.city}>
+        <input
+          id="f-city"
+          name="city"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          autoComplete="address-level2"
+          placeholder="Казань"
+          className="field min-h-11 py-2"
+          aria-invalid={!!errors.city}
+          aria-describedby="e-city"
+        />
+      </Field>
 
       <div className="flex items-center gap-2 text-sm text-ink-soft" aria-live="polite">
         {calc.state === "loading" ? (
@@ -240,28 +223,19 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
       {needAddress && (
         <Field
           id="address"
-          label={selected.mode === "door" || selected.service === "post" ? "Улица, дом, квартира" : "Адрес пункта выдачи"}
+          label={selected.mode === "door" ? "Улица, дом, квартира" : "Адрес пункта выдачи"}
           error={errors.address}
         >
           <input
             id="f-address"
             name="address"
             autoComplete="street-address"
-            placeholder={selected.mode === "door" || selected.service === "post" ? "ул. Баумана, 12, кв. 5" : "Адрес пункта или терминала"}
+            placeholder={selected.mode === "door" ? "ул. Баумана, 12, кв. 5" : "Адрес пункта выдачи"}
             className="field min-h-11 py-2"
             aria-invalid={!!errors.address}
             aria-describedby="e-address"
           />
         </Field>
-      )}
-
-      {selected?.service === "post" && selected.office && (
-        <p className="flex items-start gap-2 rounded-xl bg-ink/5 px-3 py-2.5 text-sm">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-tarp" aria-hidden />
-          <span>
-            Посылка придёт в отделение {selected.office.id}: {selected.office.address}
-          </span>
-        </p>
       )}
 
       {/* что уходит в форму */}

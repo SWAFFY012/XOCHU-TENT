@@ -17,7 +17,7 @@ import { deliveryPayment, isQuoteOnly, paymentsEnabled, routeUrl, site } from "@
 
 type Intent = "pay" | "lead";
 type Status = { state: "idle" } | { state: "sending"; intent: Intent } | { state: "error"; message: string };
-type Field = "name" | "phone" | "email" | "telegram" | "service" | "city" | "postalCode" | "point" | "address" | "consent" | "offer";
+type Field = "name" | "phone" | "email" | "telegram" | "service" | "city" | "point" | "address" | "consent" | "offer";
 type Errors = Partial<Record<Field, string>>;
 
 // Ник Telegram: @username (5–32 символа: латиница, цифры, _) или ссылка t.me/username
@@ -81,7 +81,6 @@ export function CartClient() {
             service: get("service"),
             mode: get("mode"),
             city: get("city"),
-            postalCode: get("postalCode"),
             address: get("address"),
             pointId: get("pointId"),
             pointName: get("pointName"),
@@ -100,12 +99,10 @@ export function CartClient() {
     if (form.email ? !EMAIL_RE.test(form.email) : pay) errs.email = "Укажите email — на него придёт электронный чек.";
     if (contact === "telegram" && !TG_RE.test(form.telegram)) errs.telegram = "Укажите ник в Telegram, например @username.";
     if (delivery === "carrier") {
-      const post = form.service === "post";
       if (form.city!.length < 2) errs.city = "Укажите город.";
-      if (post && form.postalCode!.length !== 6) errs.postalCode = "Для Почты нужен индекс из 6 цифр.";
       if (!form.service) errs.service = "Выберите службу доставки.";
       else if (get("needPoint") && !form.pointId) errs.point = "Выберите пункт выдачи на карте или в списке.";
-      else if (!get("needPoint") && form.address!.length < 3) errs.address = form.mode === "door" || post ? "Укажите улицу и дом." : "Укажите адрес пункта выдачи.";
+      else if (!get("needPoint") && form.address!.length < 3) errs.address = form.mode === "door" ? "Укажите улицу и дом." : "Укажите адрес пункта выдачи.";
     }
     if (!form.consent) errs.consent = "Нужно согласие на обработку персональных данных.";
     if (pay && !form.offer) errs.offer = "Примите условия оферты, чтобы оформить заказ.";

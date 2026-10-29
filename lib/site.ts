@@ -79,7 +79,7 @@ export const quoteOnlyProducts: readonly string[] = ["myagkoe-okno", "myagkoe-ok
  * Число — для всех вариантов товара, объект — по вариантам (пропитка, люверсы).
  */
 export const customPricePerM2: Readonly<Record<string, number | Readonly<Record<string, number>>>> = {
-  "tent-oxford": 392, // TODO: заказчик уточнит правило «до 6×6 +10%, от 6×6 −10%»
+  "tent-oxford": 392, // поправки от площади — sizeRule ниже
   "tent-pvh": 482,
   "myagkoe-okno": 1800,
   "myagkoe-okno-tonirovannoe": 2000,
@@ -92,34 +92,40 @@ export const customPricePerM2: Readonly<Record<string, number | Readonly<Record<
   "tkan-oxford": 320 / 1.5,
 };
 
+/**
+ * Поправка к цене м² от площади изделия (заказчик, 29.10.2026). Оксфорд:
+ * до 6×6 (до 36 м² включительно) из каталога — по прайсу, свой размер — +10%; больше 36 м² — −10% для всех.
+ */
+const sizeRule: Readonly<Record<string, { upTo: number; custom: number; over: number }>> = {
+  "tent-oxford": { upTo: 36, custom: 1.1, over: 0.9 },
+};
+
+/** Цена 1 м² для изделия этой площади: прайс с поправкой sizeRule, до целого рубля. */
+export function sizePricePerM2(slug: string, perM2: number, area: number, custom: boolean) {
+  const r = sizeRule[slug];
+  if (!r) return perM2;
+  return Math.round(perM2 * (area > r.upTo ? r.over : custom ? r.custom : 1));
+}
+
 /** Позиция оформляется заявкой, а не оплатой: окна целиком или свой размер из customQuoteOnly. */
 export const isQuoteOnly = (slug: string, custom: boolean) => quoteOnlyProducts.includes(slug) || (custom && customQuoteOnly.includes(slug));
 
 /**
- * Службы доставки и способы получения у каждой. Стоимость считается по API (lib/delivery),
+ * Службы доставки и способы получения у каждой (заказчик оставил СДЭК и Ozon, 29.10.2026). Стоимость считается по API (lib/delivery),
  * без ключей службы — «рассчитает менеджер».
  */
 export const deliveryServices = [
   { id: "cdek", title: "СДЭК", modes: ["pvz", "door"], pvzLabel: "до пункта выдачи", note: "пункт выдачи или курьер, места до 1000 кг" },
-  { id: "post", title: "Почта России", modes: ["pvz"], pvzLabel: "до отделения по индексу", note: "до отделения, посылки до 20 кг" },
   { id: "ozon", title: "Ozon Логистика", modes: ["pvz"], pvzLabel: "до пункта выдачи Ozon", note: "пункт выдачи Ozon" },
-  { id: "dellin", title: "Деловые Линии", modes: ["pvz", "door"], pvzLabel: "до терминала", note: "до терминала или двери, крупные и тяжёлые грузы" },
-  { id: "pek", title: "ПЭК", modes: ["pvz", "door"], pvzLabel: "до терминала", note: "до терминала или двери, крупные и тяжёлые грузы" },
 ] as const;
 export type DeliveryServiceId = (typeof deliveryServices)[number]["id"];
 
 /**
- * Откуда отправляем: курьер «Хочу Тент» отвозит груз на терминал службы в Санкт-Петербурге.
- * TODO: уточнить у заказчика терминалы СДЭК, ПЭК, Деловых Линий и отделение Почты, куда сдают груз.
+ * Откуда отправляем: курьер «Хочу Тент» отвозит груз в пункт приёма службы в Санкт-Петербурге.
+ * TODO: уточнить у заказчика пункт СДЭК, куда сдают груз (CDEK_SHIPMENT_POINT).
  */
 export const shipFrom = {
   city: "Санкт-Петербург",
-  /** адрес для подбора ближайшего склада приёма (ПЭК) */
-  address: "Россия, Ленинградская обл., Всеволожский р-н, г.п. Янино-1",
-  /** отделение Почты, откуда уходят посылки */
-  postalCode: "188689",
-  /** код КЛАДР города отправки (Деловые Линии) */
-  kladr: "7800000000000000000000000",
 };
 
 /** Маршрут до самовывоза в Яндекс Картах */

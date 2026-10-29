@@ -26,6 +26,3 @@ export function memo<T>(ttlMs: number) {
 /** «3» или «3–5» из минимального и максимального срока. */
 export const daysRange = (min?: number, max?: number) =>
   !min && !max ? undefined : !max || min === max ? String(min ?? max) : `${min ?? 1}–${max}`;
-
-/** см → м с точностью до сантиметра (ПЭК и Деловые Линии принимают метры) */
-export const toM = (cm: number) => Math.round(cm) / 100;

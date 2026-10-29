@@ -9,7 +9,7 @@ const clip = (s: unknown, n: number) => (typeof s === "string" ? s.trim().slice(
 /** Стоимость и сроки доставки всеми службами для корзины и города. */
 export async function POST(req: Request) {
   if (limited(clientIp(req))) return NextResponse.json({ error: "Слишком много расчётов. Попробуйте через несколько минут." }, { status: 429 });
-  const body = (await req.json().catch(() => ({}))) as { city?: string; address?: string; postalCode?: string; items?: CartLine[] };
+  const body = (await req.json().catch(() => ({}))) as { city?: string; address?: string; items?: CartLine[] };
   const city = clip(body.city, 80);
   if (city.length < 2) return NextResponse.json({ error: "Укажите город." }, { status: 400 });
   try {
@@ -18,7 +18,6 @@ export async function POST(req: Request) {
     const options = await quoteDelivery({
       city,
       address: clip(body.address, 200),
-      postalCode: clip(body.postalCode, 12).replace(/\D/g, "").slice(0, 6),
       parcels,
       value: items.reduce((s, i) => s + i.price * i.qty, 0),
     });

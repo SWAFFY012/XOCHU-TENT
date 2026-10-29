@@ -17,12 +17,10 @@ export type DeliveryQuery = {
   city: string;
   /** улица и дом — для доставки до двери */
   address: string;
-  /** индекс получателя — для Почты России */
-  postalCode: string;
   parcels: Parcel[];
   /** сумма товаров, ₽ — для объявленной ценности и страховки */
   value: number;
-  /** выбранный пункт выдачи: от него может зависеть цена (терминалы ПЭК и Деловых Линий) */
+  /** выбранный пункт выдачи */
   pointId?: string;
 };
 
@@ -41,8 +39,6 @@ export type DeliveryOption = {
   preliminary?: boolean;
   /** нельзя выбрать: груз не проходит по весу или габаритам */
   unavailable?: boolean;
-  /** отделение Почты, куда придёт посылка (по индексу) */
-  office?: DeliveryPoint;
 };
 
 export type DeliveryPoint = {

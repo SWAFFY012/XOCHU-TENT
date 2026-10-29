@@ -42,9 +42,8 @@ export type OrderDelivery =
       /** до пункта выдачи (терминала, отделения) или курьером до двери */
       mode: "pvz" | "door";
       city: string;
-      /** адрес получателя (для двери и Почты) */
+      /** адрес получателя (для двери) */
       address: string;
-      postalCode?: string;
       /** выбранный пункт выдачи или терминал */
       point?: { id: string; name: string; address: string };
       /** стоимость доставки, ₽; null — считает менеджер */

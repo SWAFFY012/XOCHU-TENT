@@ -10,7 +10,7 @@ import { useCart } from "@/lib/cart";
 import { hexOf } from "@/lib/colors";
 import { priceCustom, estimateWeight, formatArea, formatPrice, formatWeight, parseSize } from "@/lib/format";
 import { sizeLabels } from "@/lib/content";
-import { isQuoteOnly } from "@/lib/site";
+import { isQuoteOnly, sizePricePerM2 } from "@/lib/site";
 import type { CompactVariants, ProductSummary } from "@/lib/types";
 
 export type Selection = { option: string; size: string; custom: boolean };
@@ -84,11 +84,11 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
     onSelect?.({ option: p.options[option], size: data.sizes[current], custom });
   }, [onSelect, p.options, option, data.sizes, current, custom]);
 
-  const perM2 = p.pricePerM2ByOption[p.options[option]] ?? p.pricePerM2Median;
   const w = Number(cw.replace(",", "."));
   const l = Number(cl.replace(",", "."));
   const customValid = w >= 0.5 && l >= 0.5 && w <= 30 && l <= 50;
   const customArea = customValid ? Math.round(w * l * 100) / 100 : 0;
+  const perM2 = sizePricePerM2(p.slug, p.pricePerM2ByOption[p.options[option]] ?? p.pricePerM2Median, customArea, true);
   const customPrice = customValid ? priceCustom(customArea, perM2) : 0;
   // Окна (любой размер) и свой размер у некоторых изделий — по заявке: цену и детали согласует менеджер
   const productQuote = isQuoteOnly(p.slug, false);

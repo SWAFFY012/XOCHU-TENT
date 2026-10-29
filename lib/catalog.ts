@@ -3,7 +3,7 @@ import raw from "@/data/products.json";
 import { productCopy } from "./content";
 import { cardFrames, getMedia } from "./media";
 import { priceCustom } from "./format";
-import { customPricePerM2 } from "./site";
+import { customPricePerM2, sizePricePerM2 } from "./site";
 import type { CompactVariants, Product, ProductSummary } from "./types";
 
 // Полный массив вариантов живёт только на сервере.
@@ -22,7 +22,7 @@ function withCustomPrices(p: Product): Product {
   const vals = Object.values(pricePerM2ByOption).sort((a, b) => a - b);
   const mid = vals.length >> 1;
   const pricePerM2Median = Math.round(vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2);
-  const variants = p.variants.map((v) => ({ ...v, price: priceCustom(v.area, pricePerM2ByOption[v.option]) }));
+  const variants = p.variants.map((v) => ({ ...v, price: priceCustom(v.area, sizePricePerM2(p.slug, pricePerM2ByOption[v.option], v.area, false)) }));
   const prices = variants.map((v) => v.price);
   return {
     ...p,

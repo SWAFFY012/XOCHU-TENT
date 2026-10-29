@@ -8,7 +8,7 @@ import { Check } from "lucide-react";
 import { PriceTicker } from "@/components/motion/PriceTicker";
 import { useCart } from "@/lib/cart";
 import { priceCustom, estimateWeight, formatPrice } from "@/lib/format";
-import { isQuoteOnly } from "@/lib/site";
+import { isQuoteOnly, sizePricePerM2 } from "@/lib/site";
 import type { ProductSummary } from "@/lib/types";
 
 type Lite = Pick<ProductSummary, "slug" | "title" | "kind" | "colors" | "options" | "pricePerM2ByOption" | "pricePerM2Median" | "kgPerM2">;
@@ -22,8 +22,8 @@ export function CustomCalc({ products }: { products: Lite[] }) {
   const [done, setDone] = useState(false);
 
   const p = products.find((x) => x.slug === slug)!;
-  const perM2 = p.pricePerM2ByOption[p.options[0]] ?? p.pricePerM2Median;
   const area = Math.round(w * l * 100) / 100;
+  const perM2 = sizePricePerM2(p.slug, p.pricePerM2ByOption[p.options[0]] ?? p.pricePerM2Median, area, true);
   const price = priceCustom(area, perM2);
   const fmt = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
 

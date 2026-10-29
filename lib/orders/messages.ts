@@ -14,7 +14,7 @@ export function deliveryLine(o: Order) {
   const d = o.delivery;
   const service = deliveryServices.find((s) => s.id === d.service);
   const how = d.mode === "door" ? "курьером до двери" : (service?.pvzLabel ?? "до пункта выдачи");
-  const where = d.point ? `${d.point.address} (${d.point.name}, код ${d.point.id})` : [d.postalCode, d.address].filter(Boolean).join(", ");
+  const where = d.point ? `${d.point.address} (${d.point.name}, код ${d.point.id})` : d.address;
   const cost = d.cost ? `${d.note ? "≈ " : ""}${formatPrice(d.cost)}${d.days ? `, ${d.days} дн.` : ""}` : "стоимость рассчитает менеджер";
   return `${serviceTitle(d.service)} ${how}, ${d.city}, ${where} — ${cost}${d.note ? ` (${d.note})` : ""}`;
 }

@@ -28,11 +28,10 @@ ADMIN_PASSWORD=...          # вход в /admin
 SMTP_HOST=... SMTP_USER=... SMTP_PASS=... SMTP_FROM=...   # письма покупателю
 OZONPAY_API_URL=... OZONPAY_ACCESS_KEY=... OZONPAY_SECRET_KEY=...
 CDEK_CLIENT_ID=... CDEK_CLIENT_SECRET=... CDEK_SHIPMENT_POINT=...   # расчёт и отправления СДЭК
-PEK_LOGIN=... PEK_API_KEY=...                                       # расчёт ПЭК
-DELLIN_APP_KEY=...                                                   # расчёт Деловых Линий
+OZON_SELLER_CLIENT_ID=... OZON_SELLER_API_KEY=...                    # Ozon Логистика
 ```
 
-Почта России считается без ключа. Служба без ключей остаётся в корзине с пометкой «рассчитает менеджер».
+Служба без ключей остаётся в корзине с пометкой «рассчитает менеджер».
 
 Заказы хранятся в `.data/orders.json` в каталоге приложения. Деплой не трогает ни `.env`, ни `.data`:
 FTP-выгрузка удаляет только то, что сама загрузила. Делайте копию `.data/orders.json` вместе с бэкапами.

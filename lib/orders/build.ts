@@ -2,7 +2,7 @@ import "server-only";
 import { findVariant, getProduct, getSummary } from "@/lib/catalog";
 import { quoteDelivery, toParcels } from "@/lib/delivery";
 import { estimateWeight, priceCustom } from "@/lib/format";
-import { deliveryPayment, deliveryServices, isQuoteOnly } from "@/lib/site";
+import { deliveryPayment, deliveryServices, isQuoteOnly, sizePricePerM2 } from "@/lib/site";
 import type { ContactMethod, Order, OrderDelivery, OrderItem } from "./types";
 
 /** Что присылает корзина. Цены и веса не принимаем — считаем по прайсу. */
@@ -19,7 +19,6 @@ export type CheckoutBody = {
   mode?: string;
   city?: string;
   address?: string;
-  postalCode?: string;
   pointId?: string;
   pointName?: string;
   pointAddress?: string;
@@ -105,19 +104,17 @@ async function buildDelivery(body: CheckoutBody, items: OrderItem[], itemsTotal:
   const mode = (service.modes as readonly string[]).includes(body.mode ?? "") ? (body.mode as "pvz" | "door") : service.modes[0];
   const city = clip(body.city, 80);
   const address = clip(body.address, 200);
-  const postalCode = clip(body.postalCode, 12).replace(/\D/g, "").slice(0, 6);
   const pointId = clip(body.pointId, 64);
   const point = pointId ? { id: pointId, name: clip(body.pointName, 120), address: clip(body.pointAddress, 200) } : undefined;
 
   if (city.length < 2) throw new CheckoutError("Укажите город доставки.");
-  if (service.id === "post" && postalCode.length !== 6) throw new CheckoutError("Укажите индекс для доставки Почтой России.");
-  // до двери и Почтой нужен адрес; до пункта — выбранный пункт или адрес текстом, если карта пунктов недоступна
-  if ((mode === "door" || service.id === "post" || !point) && address.length < 3) {
-    throw new CheckoutError(mode === "door" || service.id === "post" ? "Укажите адрес доставки." : "Выберите пункт выдачи.");
+  // до двери нужен адрес; до пункта — выбранный пункт или адрес текстом, если карта пунктов недоступна
+  if ((mode === "door" || !point) && address.length < 3) {
+    throw new CheckoutError(mode === "door" ? "Укажите адрес доставки." : "Выберите пункт выдачи.");
   }
 
   const [option] = await quoteDelivery(
-    { city, address, postalCode, parcels: toParcels(items), value: itemsTotal, pointId: mode === "pvz" ? pointId || undefined : undefined },
+    { city, address, parcels: toParcels(items), value: itemsTotal, pointId: mode === "pvz" ? pointId || undefined : undefined },
     service.id,
   ).then((list) => list.filter((o) => o.mode === mode));
   if (option?.unavailable) throw new CheckoutError(`${service.title} не возьмёт этот заказ: ${option.note}. Выберите другую службу.`);
@@ -128,7 +125,6 @@ async function buildDelivery(body: CheckoutBody, items: OrderItem[], itemsTotal:
     mode,
     city,
     address,
-    postalCode: postalCode || undefined,
     point: mode === "pvz" ? point : undefined,
     cost: option?.cost ?? null,
     days: option?.days,
@@ -158,7 +154,7 @@ export function resolveItems(lines: CartLine[] | undefined): OrderItem[] {
       const [w, l] = size.split("х").map(num);
       if (!(w >= 0.5 && l >= 0.5 && w <= 30 && l <= 50)) throw new CheckoutError("Проверьте нестандартный размер.");
       const area = Math.round(w * l * 100) / 100;
-      price = priceCustom(area, p.pricePerM2ByOption[it.option] ?? p.pricePerM2Median);
+      price = priceCustom(area, sizePricePerM2(p.slug, p.pricePerM2ByOption[it.option] ?? p.pricePerM2Median, area, true));
       weight = estimateWeight(area, p.kgPerM2);
       box = estimateBox(p.slug, it.option, area);
     } else {
