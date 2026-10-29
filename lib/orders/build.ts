@@ -114,7 +114,7 @@ async function buildDelivery(body: CheckoutBody, items: OrderItem[], itemsTotal:
   }
 
   const [option] = await quoteDelivery(
-    { city, address, parcels: toParcels(items), value: itemsTotal, pointId: mode === "pvz" ? pointId || undefined : undefined },
+    { city, address, parcels: toParcels(items), items, value: itemsTotal, pointId: mode === "pvz" ? pointId || undefined : undefined },
     service.id,
   ).then((list) => list.filter((o) => o.mode === mode));
   if (option?.unavailable) throw new CheckoutError(`${service.title} не возьмёт этот заказ: ${option.note}. Выберите другую службу.`);

@@ -68,7 +68,7 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
   }, [city, linesKey]);
 
   // Пункты выдачи выбранной службы в городе
-  const needPoints = selected?.mode === "pvz" && selected.service !== "ozon";
+  const needPoints = selected?.mode === "pvz";
   const pointsKey = needPoints ? `${service}|${city.trim().toLowerCase()}|${linesKey}` : "";
   const pointsLoading = !!pointsKey && points.key !== pointsKey;
   useEffect(() => {

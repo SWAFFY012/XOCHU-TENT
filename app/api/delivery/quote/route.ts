@@ -19,6 +19,7 @@ export async function POST(req: Request) {
       city,
       address: clip(body.address, 200),
       parcels,
+      items,
       value: items.reduce((s, i) => s + i.price * i.qty, 0),
     });
     return NextResponse.json({ options, places: parcels.length });

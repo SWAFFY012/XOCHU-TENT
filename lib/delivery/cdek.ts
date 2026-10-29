@@ -37,7 +37,7 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 const packages = (parcels: Parcel[]) =>
   parcels.map((p) => ({ weight: Math.round(p.weight * 1000), length: Math.ceil(p.dims[0]), width: Math.ceil(p.dims[1]), height: Math.ceil(p.dims[2]) }));
 
-type City = { code: number; city: string; region?: string };
+type City = { code: number; city: string; region?: string; latitude?: number; longitude?: number };
 const cityCache = memo<City | null>(24 * 60 * 60_000);
 
 /** Код города СДЭК по названию. */
@@ -47,6 +47,13 @@ function findCity(name: string) {
     const list = await api<City[]>(`location/cities?${new URLSearchParams({ country_codes: "RU", city: q, size: "10" })}`);
     return list.find((c) => c.city.toLowerCase() === q.toLowerCase()) ?? list[0] ?? null;
   });
+}
+
+/** Центр города по справочнику СДЭК — для поиска пунктов Ozon рядом с ним. */
+export async function cityCenter(name: string): Promise<{ lat: number; lon: number } | null> {
+  if (!cdek.ready()) return null;
+  const c = await findCity(name);
+  return c?.latitude && c.longitude ? { lat: c.latitude, lon: c.longitude } : null;
 }
 
 type Tariff = { tariff_code: number; tariff_name: string; delivery_mode: number; delivery_sum: number; period_min: number; period_max: number };

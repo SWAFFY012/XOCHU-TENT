@@ -18,6 +18,8 @@ export type DeliveryQuery = {
   /** улица и дом — для доставки до двери */
   address: string;
   parcels: Parcel[];
+  /** позиции корзины — Ozon считает доставку по своим SKU товаров */
+  items?: { slug: string; option: string; color: string; size: string; qty: number; custom: boolean }[];
   /** сумма товаров, ₽ — для объявленной ценности и страховки */
   value: number;
   /** выбранный пункт выдачи */
