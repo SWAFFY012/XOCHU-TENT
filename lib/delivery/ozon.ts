@@ -1,45 +1,113 @@
 import "server-only";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { site } from "@/lib/site";
 import { cityCenter } from "./cdek";
 import { daysRange, fetchJson, memo } from "./http";
 import type { DeliveryOption, DeliveryPoint, DeliveryProvider, DeliveryQuery } from "./types";
 
 /**
  * Ozon Доставка для собственного магазина, Seller API: docs.ozon.ru/api/seller/#tag/OzonLogistics.
- * Эти методы принимают только OAuth-токен частного приложения, обычный Api-Key не подходит.
- * Приложение: кабинет Ozon → Настройки → Управление частными приложениями; токен — client_credentials
- * (docs.ozon.ru/api/applications/#tag/Auth).
+ * Эти методы принимают только OAuth-токен частного приложения, выданный продавцом: токен client_credentials
+ * («от имени приложения») Seller API отклоняет. Поэтому продавец один раз авторизует приложение
+ * по ссылке /api/delivery/ozon/oauth/start, а дальше сайт сам обновляет токен по refresh_token
+ * (docs.ozon.ru/api/applications/#tag/Auth). refresh_token хранится в .data/ozon-oauth.json.
  *   OZON_APP_CLIENT_ID, OZON_APP_CLIENT_SECRET — из настроек приложения
+ *   OZON_SELLER_ID — кабинет, который вправе авторизовать сайт (по умолчанию «Хочу Тент»)
  *   OZON_DELIVERY_SCHEMA — MIX (на выбор Ozon, по умолчанию), FBS или FBO
  *   OZON_OAUTH_URL, OZON_SELLER_API_URL — адреса, если Ozon их сменит
+ * Обратный URL в настройках приложения: https://xn----jtbybvccot.xn--p1ai/api/delivery/ozon/oauth/callback
  * Ozon считает доставку только для своих товаров: позиция корзины → SKU на Ozon (matchProduct).
  */
 const API = (process.env.OZON_SELLER_API_URL || "https://api-seller.ozon.ru").replace(/\/$/, "");
 const OAUTH = process.env.OZON_OAUTH_URL || "https://xapi.ozon.ru/oauth/token";
 const SCHEMA = process.env.OZON_DELIVERY_SCHEMA || "MIX";
+const SELLER_ID = process.env.OZON_SELLER_ID || "2492755";
+/** права, которые сайт просит у продавца: доставка, чтение товаров, отправлений и складов */
+const SCOPES = ["seller-api.ozon-logistics", "seller-api.product-read-only", "seller-api.posting-fbs-read-only", "seller-api.posting-fbo-read-only", "seller-api.warehouse"];
+const TOKEN_FILE = path.join(process.cwd(), ".data", "ozon-oauth.json");
 /** пункты Ozon ищем в этом радиусе от центра города, км */
 const RADIUS_KM = 25;
 
-let token: { value: string; exp: number; scope: string[] } | null = null;
+/** Обратный URL — в punycode, как его хранит Ozon. */
+export const ozonRedirectUri = () => `${new URL(site.url).origin}/api/delivery/ozon/oauth/callback`;
 
-/** OAuth-токен приложения; живёт час, обновляем заранее. */
-export async function ozonToken() {
-  if (token && Date.now() < token.exp) return token;
-  const r = await fetchJson<{ access_token: string; expires_in: number; scope?: string[] }>(OAUTH, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      grant_type: "client_credentials",
-      client_id: process.env.OZON_APP_CLIENT_ID ?? "",
-      client_secret: process.env.OZON_APP_CLIENT_SECRET ?? "",
-    }),
+/** Ссылка, по которой продавец разрешает сайту работать с его кабинетом. */
+export function ozonAuthorizeUrl(state: string) {
+  const q = new URLSearchParams({
+    response_type: "code",
+    access_type: "offline",
+    client_id: process.env.OZON_APP_CLIENT_ID ?? "",
+    redirect_uri: ozonRedirectUri(),
+    scope: SCOPES.join(" "),
+    state,
   });
-  token = { value: r.access_token, exp: Date.now() + (r.expires_in - 60) * 1000, scope: r.scope ?? [] };
-  return token;
+  return `https://seller.ozon.ru/app/appstore/oauth/authorize?${q}`;
 }
 
-/** Запрос к Seller API с токеном приложения. */
+type TokenResponse = { access_token: string; expires_in: number; refresh_token?: string; scope?: string[] };
+type Saved = { refreshToken: string; seller: string; scope: string[]; at: string };
+
+let token: { value: string; exp: number; scope: string[] } | null = null;
+/** одно обновление на всех: старый refresh_token после обмена может перестать действовать */
+let refreshing: Promise<unknown> | null = null;
+
+async function requestToken(body: Record<string, string>) {
+  return fetchJson<TokenResponse>(OAUTH, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: process.env.OZON_APP_CLIENT_ID ?? "", client_secret: process.env.OZON_APP_CLIENT_SECRET ?? "", ...body }),
+  });
+}
+
+/** sub из JWT — Seller ID продавца, выдавшего токен. */
+const sellerOf = (jwt: string) => {
+  try {
+    return String(JSON.parse(Buffer.from(jwt.split(".")[1], "base64url").toString()).sub ?? "");
+  } catch {
+    return "";
+  }
+};
+
+async function remember(r: TokenResponse, prev?: Saved) {
+  const saved: Saved = {
+    refreshToken: r.refresh_token || prev?.refreshToken || "",
+    seller: sellerOf(r.access_token) || prev?.seller || "",
+    scope: r.scope ?? prev?.scope ?? [],
+    at: new Date().toISOString(),
+  };
+  await mkdir(path.dirname(TOKEN_FILE), { recursive: true });
+  await writeFile(TOKEN_FILE, JSON.stringify(saved, null, 1), { mode: 0o600 });
+  token = { value: r.access_token, exp: Date.now() + (r.expires_in - 60) * 1000, scope: saved.scope };
+  return saved;
+}
+
+/** Обмен кода из обратного URL на токены. Принимаем только кабинет SELLER_ID. */
+export async function ozonAuthorize(code: string) {
+  const r = await requestToken({ grant_type: "authorization_code", code, redirect_uri: ozonRedirectUri() });
+  const seller = sellerOf(r.access_token);
+  if (seller !== SELLER_ID) throw new Error(`Авторизован кабинет ${seller || "?"}, а нужен ${SELLER_ID}. Войдите в кабинет «Хочу Тент» на seller.ozon.ru.`);
+  if (!r.refresh_token) throw new Error("Ozon не выдал refresh_token");
+  return remember(r);
+}
+
+/** Токен продавца; живёт час, обновляем по refresh_token заранее. */
+export async function ozonToken() {
+  if (token && Date.now() < token.exp) return token;
+  let saved: Saved;
+  try {
+    saved = JSON.parse(await readFile(TOKEN_FILE, "utf8"));
+  } catch {
+    throw new Error("Ozon не авторизован: продавцу нужно открыть /api/delivery/ozon/oauth/start");
+  }
+  refreshing ??= requestToken({ grant_type: "refresh_token", refresh_token: saved.refreshToken })
+    .then((r) => remember(r, saved))
+    .finally(() => (refreshing = null));
+  await refreshing;
+  return token!;
+}
+
+/** Запрос к Seller API с токеном продавца. */
 export async function sellerApi<T>(method: string, body: unknown): Promise<T> {
   const { value } = await ozonToken();
   return fetchJson<T>(`${API}${method}`, {
