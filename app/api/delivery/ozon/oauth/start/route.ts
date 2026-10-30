@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, connection } from "next/server";
 import { ozon, ozonAuthorizeUrl } from "@/lib/delivery/ozon";
 
 /**
@@ -7,6 +7,8 @@ import { ozon, ozonAuthorizeUrl } from "@/lib/delivery/ozon";
  * state в cookie защищает обратный URL от подложного кода.
  */
 export async function GET() {
+  // на каждый запрос свой state: не собирать статически
+  await connection();
   if (!ozon.ready()) return NextResponse.json({ ok: false, error: "Не заданы OZON_APP_CLIENT_ID и OZON_APP_CLIENT_SECRET" });
   const state = randomBytes(16).toString("hex");
   const res = NextResponse.redirect(ozonAuthorizeUrl(state));
