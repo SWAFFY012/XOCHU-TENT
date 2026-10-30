@@ -32,18 +32,31 @@ const RADIUS_KM = 25;
 /** Обратный URL — в punycode, как его хранит Ozon. */
 export const ozonRedirectUri = () => `${new URL(site.url).origin}/api/delivery/ozon/oauth/callback`;
 
-/** Ссылка, по которой продавец разрешает сайту работать с его кабинетом. */
-export function ozonAuthorizeUrl(state: string) {
+/**
+ * Ссылка, по которой продавец разрешает сайту работать с его кабинетом.
+ * scopes — подмножество SCOPES: если Ozon ответит «некорректный список разрешений», сужаем список без выкатки.
+ * Пробелы между правами — %20: «+» из URLSearchParams Ozon не принимает.
+ */
+export function ozonAuthorizeUrl(state: string, scopes: string[] = SCOPES) {
   const q = new URLSearchParams({
     response_type: "code",
     access_type: "offline",
     client_id: process.env.OZON_APP_CLIENT_ID ?? "",
     redirect_uri: ozonRedirectUri(),
-    scope: SCOPES.join(" "),
     state,
   });
-  return `https://seller.ozon.ru/app/appstore/oauth/authorize?${q}`;
+  const scope = scopes.filter((x) => SCOPES.includes(x)).map(encodeURIComponent).join("%20");
+  return `https://seller.ozon.ru/app/appstore/oauth/authorize?${q}&scope=${scope}`;
 }
+
+/** Короткие имена прав для ссылки ?scopes=logistics,product */
+export const OZON_SCOPE_ALIASES: Record<string, string> = {
+  logistics: "seller-api.ozon-logistics",
+  product: "seller-api.product-read-only",
+  fbs: "seller-api.posting-fbs-read-only",
+  fbo: "seller-api.posting-fbo-read-only",
+  warehouse: "seller-api.warehouse",
+};
 
 type TokenResponse = { access_token: string; expires_in: number; refresh_token?: string; scope?: string[] };
 type Saved = { refreshToken: string; seller: string; scope: string[]; at: string };
