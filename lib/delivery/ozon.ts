@@ -25,6 +25,8 @@ const SCHEMA = process.env.OZON_DELIVERY_SCHEMA || "MIX";
 const SELLER_ID = process.env.OZON_SELLER_ID || "2492755";
 /** права, которые сайт просит у продавца: доставка, чтение товаров, отправлений и складов */
 const SCOPES = ["seller-api.ozon-logistics", "seller-api.product-read-only", "seller-api.posting-fbs-read-only", "seller-api.posting-fbo-read-only", "seller-api.warehouse"];
+/** права магазина приложений, отмеченные в приложении заказчика: Ozon может требовать полный список */
+const APP_STORE_SCOPES = ["seller-app-store-api.me", "seller-app-store-api.payment"];
 const TOKEN_FILE = path.join(process.cwd(), ".data", "ozon-oauth.json");
 /** пункты Ozon ищем в этом радиусе от центра города, км */
 const RADIUS_KM = 25;
@@ -34,10 +36,11 @@ export const ozonRedirectUri = () => `${new URL(site.url).origin}/api/delivery/o
 
 /**
  * Ссылка, по которой продавец разрешает сайту работать с его кабинетом.
- * scopes — подмножество SCOPES: если Ozon ответит «некорректный список разрешений», сужаем список без выкатки.
+ * scopes — подмножество SCOPES и APP_STORE_SCOPES; null — без параметра scope (Ozon берёт права приложения).
+ * Если Ozon ответит «некорректный список разрешений», меняем список ссылкой без выкатки.
  * Пробелы между правами — %20: «+» из URLSearchParams Ozon не принимает.
  */
-export function ozonAuthorizeUrl(state: string, scopes: string[] = SCOPES) {
+export function ozonAuthorizeUrl(state: string, scopes: string[] | null = [...SCOPES, ...APP_STORE_SCOPES]) {
   const q = new URLSearchParams({
     response_type: "code",
     access_type: "offline",
@@ -45,7 +48,8 @@ export function ozonAuthorizeUrl(state: string, scopes: string[] = SCOPES) {
     redirect_uri: ozonRedirectUri(),
     state,
   });
-  const scope = scopes.filter((x) => SCOPES.includes(x)).map(encodeURIComponent).join("%20");
+  if (!scopes) return `https://seller.ozon.ru/app/appstore/oauth/authorize?${q}`;
+  const scope = scopes.filter((x) => SCOPES.includes(x) || APP_STORE_SCOPES.includes(x)).map(encodeURIComponent).join("%20");
   return `https://seller.ozon.ru/app/appstore/oauth/authorize?${q}&scope=${scope}`;
 }
 
@@ -56,6 +60,8 @@ export const OZON_SCOPE_ALIASES: Record<string, string> = {
   fbs: "seller-api.posting-fbs-read-only",
   fbo: "seller-api.posting-fbo-read-only",
   warehouse: "seller-api.warehouse",
+  me: "seller-app-store-api.me",
+  payment: "seller-app-store-api.payment",
 };
 
 type TokenResponse = { access_token: string; expires_in: number; refresh_token?: string; scope?: string[] };
