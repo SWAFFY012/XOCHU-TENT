@@ -20,7 +20,7 @@ export function deliveryLine(o: Order) {
 }
 
 /** Сообщение менеджеру о новом заказе или заявке. */
-export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: string; paymentError?: boolean }) {
+export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: string; paymentError?: string }) {
   const lines = o.items.map(
     (i, n) =>
       `${n + 1}. <b>${esc(i.title)}</b>\n   ${esc(formatSize(i.size))}${i.custom ? " (свой размер)" : ""}, ${esc(i.color)}${i.option !== "Стандарт" ? `, ${esc(i.option)}` : ""}\n   ${i.qty} шт × ${formatPrice(i.price)} = <b>${formatPrice(i.price * i.qty)}</b>${i.weight ? `\n   ${formatWeight(i.weight)}/шт${i.box ? `, упаковка ${i.box} см` : ""}` : ""}`,
@@ -45,7 +45,7 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
       ? opts.paymentUrl
         ? "💳 Покупатель ушёл на оплату Ozon Pay — придёт уведомление об оплате."
         : paymentsEnabled && opts.paymentError
-          ? "⚠️ Платёж не создался — отправьте покупателю ссылку на оплату."
+          ? `⚠️ Платёж не создался (${esc(opts.paymentError)}) — отправьте покупателю ссылку на оплату.`
           : "💳 Онлайн-оплата выключена — отправьте покупателю ссылку на оплату."
       : null,
     o.delivery.method === "carrier"

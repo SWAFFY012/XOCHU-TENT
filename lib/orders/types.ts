@@ -67,6 +67,8 @@ export type PaymentState = {
   status: "none" | "pending" | "paid" | "failed" | "refunded";
   /** ссылка на платёжную форму */
   url?: string;
+  /** почему платёж не создался — для менеджера */
+  error?: string;
   paidAt?: string;
   /** обработанные уведомления провайдера — для идемпотентности webhook */
   events: string[];

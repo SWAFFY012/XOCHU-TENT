@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   }
 
   let paymentUrl: string | undefined;
-  let paymentError = false;
+  let paymentError: string | undefined;
   if (order.kind === "order" && paymentsEnabled && saved) {
     try {
       const { paymentId, url } = await createPayment(buildPaymentRequest(order));
@@ -69,7 +69,11 @@ export async function POST(req: Request) {
       });
     } catch (e) {
       console.error("[orders] платёж не создался", e);
-      paymentError = true;
+      paymentError = e instanceof Error ? e.message.slice(0, 300) : "ошибка";
+      const reason = paymentError;
+      await updateOrder(order.id, (o) => {
+        o.payment = { ...o.payment, error: reason };
+      }).catch((err) => console.error("[orders] не записали ошибку платежа", err));
     }
   }
 
