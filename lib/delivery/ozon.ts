@@ -305,6 +305,11 @@ const REASON: Record<string, string> = {
   PACKAGE_MAX_WEIGHT_RESTRICTION: "груз тяжелее допустимого",
   PACKAGE_MAX_VOLUME_WEIGHT_RESTRICTION: "груз больше допустимого объёма",
 };
+/** «149.20» → { units: 149, nanos: 20 }: у Ozon копейки лежат в nanos. Бесплатная доставка — без объекта. */
+const deliveryPrice = (amount?: string) => {
+  const fee = Number(amount);
+  return fee > 0 ? { currency_code: "RUB", units: Math.floor(fee), nanos: Math.round((fee % 1) * 100) } : undefined;
+};
 const reasonOf = (s: Split) => [s.unavailable_reason, s.delivery_method?.unavailable_reason].find((r) => r && r !== "UNSPECIFIED");
 const daysUntil = (iso?: string) => (iso ? Math.max(1, Math.ceil((Date.parse(iso) - Date.now()) / 86_400_000)) : undefined);
 
@@ -339,7 +344,7 @@ export const ozon: DeliveryProvider = {
   /**
    * Заказ в Ozon по схеме FBS: проверяем доставку до выбранного пункта и создаём заказ покупателя.
    * Отправление появится в кабинете Ozon (FBS → Отправления): продавец собирает его и сдаёт, как обычный заказ.
-   * Доставку покупателю Ozon не выставляем: она посчитана на сайте и идёт по правилам сайта.
+   * Доставку оплачивает покупатель: в заказ передаём её стоимость из расчёта Ozon.
    */
   async createOrder(order: Order) {
     const d = order.delivery;
@@ -376,6 +381,7 @@ export const ozon: DeliveryProvider = {
             delivery_type: s.delivery_method.delivery_type,
             logistic_date_range: slot.logistic_date_range,
             timeslot_id: slot.timeslot_id,
+            price: deliveryPrice(s.commissions?.total?.amount),
           },
           warehouse_id: s.warehouse_id,
           items: (s.items ?? []).map((x) => {
