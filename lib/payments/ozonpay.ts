@@ -135,7 +135,8 @@ export async function createPayment(req: PaymentRequest): Promise<{ paymentId: s
   });
   const data = (await res.json().catch(() => ({}))) as { order?: { id?: string; payLink?: string }; code?: number; message?: string };
   if (!res.ok || !data.order?.id || !data.order.payLink) {
-    throw new Error(`Ozon Pay createOrder: ${res.status} ${data.message ?? ""}`.trim());
+    // тело ответа целиком (без ключей — Ozon их не возвращает): в нём бывает, какое именно поле не прошло проверку
+    throw new Error(`Ozon Pay createOrder: ${res.status} ${JSON.stringify(data)}`.slice(0, 280));
   }
   return { paymentId: data.order.id, url: data.order.payLink };
 }
