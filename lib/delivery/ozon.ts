@@ -289,7 +289,8 @@ async function checkout(lines: Line[], pointId: string) {
   const r = await sellerApi<{ splits?: Split[] }>("/v2/delivery/checkout", {
     delivery_schema: SCHEMA,
     delivery_type: { pick_up: { map_point_id: Number(pointId) } },
-    items: lines.map((l) => ({ sku: l.sku, offer_id: l.offerId, quantity: l.qty })),
+    // Ozon принимает у позиции либо sku, либо offer_id, не оба
+    items: lines.map((l) => ({ sku: l.sku, quantity: l.qty })),
   });
   return r.splits ?? [];
 }
@@ -379,7 +380,7 @@ export const ozon: DeliveryProvider = {
           warehouse_id: s.warehouse_id,
           items: (s.items ?? []).map((x) => {
             const line = lines.find((l) => l.p.sku === x.sku);
-            return { sku: x.sku, offer_id: x.offer_id ?? line?.p.offerId, quantity: x.quantity, price: { currency_code: "RUB", units: Math.round(line?.item.price ?? 0), nanos: 0 } };
+            return { sku: x.sku, quantity: x.quantity, price: { currency_code: "RUB", units: Math.round(line?.item.price ?? 0), nanos: 0 } };
           }),
         };
       }),
