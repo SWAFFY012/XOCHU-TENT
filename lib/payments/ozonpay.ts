@@ -59,9 +59,16 @@ export type PaymentRequest = {
   notificationUrl: string;
 };
 
-/** Наименование позиции в чеке: до 128 символов, как требует ФФД. */
+/**
+ * Наименование позиции в чеке: до 128 символов, как требует ФФД. Ozon отклоняет «×» и длинное тире («некорректное название товара»),
+ * поэтому только буквы, цифры, пробел и простая пунктуация.
+ */
 const receiptName = (i: Order["items"][number]) =>
-  `${i.title}, ${i.size.replace("х", "×")} м, ${i.color}${i.option !== "Стандарт" ? `, ${i.option}` : ""}`.slice(0, 128);
+  `${i.title}, ${i.size} м, ${i.color}${i.option !== "Стандарт" ? `, ${i.option}` : ""}`
+    .replace(/[—–]/g, "-")
+    .replace(/[^\p{L}\p{N} ,.\-()/%]/gu, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 128);
 
 /** Собирает запрос на оплату заказа: сумма, позиции чека, адреса возврата и уведомлений. */
 export function buildPaymentRequest(order: Order): PaymentRequest {
