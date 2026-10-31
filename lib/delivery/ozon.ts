@@ -4,8 +4,9 @@ import path from "node:path";
 import { site } from "@/lib/site";
 import type { Order } from "@/lib/orders/types";
 import { cityCenter } from "./cdek";
+import { normalizeOffer, ozonOfferKeys, type OzonLine } from "./ozon-match";
 import { daysRange, fetchJson, memo } from "./http";
-import type { DeliveryOption, DeliveryPoint, DeliveryProvider, DeliveryQuery } from "./types";
+import type { DeliveryOption, DeliveryPoint, DeliveryProvider } from "./types";
 
 /**
  * Ozon Доставка для собственного магазина, Seller API: docs.ozon.ru/api/seller/#tag/OzonLogistics.
@@ -173,12 +174,27 @@ export function ozonProducts() {
   });
 }
 
+const indexCache = new WeakMap<OzonProduct[], Map<string, OzonProduct>>();
+
 /**
- * Позиция корзины → товар на Ozon.
- * TODO: сопоставить по выгрузке .data/ozon-products.json (POST /api/delivery/ozon/sync), когда увидим артикулы заказчика.
+ * Позиция корзины → товар заказчика на Ozon по артикулу (правила — в ozon-match.ts).
+ * Если артикул встречается дважды, берём тот, что в наличии по FBS.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function matchProduct(_item: NonNullable<DeliveryQuery["items"]>[number], _products: OzonProduct[]): OzonProduct | null {
+function matchProduct(item: OzonLine, products: OzonProduct[]): OzonProduct | null {
+  let index = indexCache.get(products);
+  if (!index) {
+    index = new Map();
+    for (const p of products) {
+      const key = normalizeOffer(p.offerId);
+      const prev = index.get(key);
+      if (!prev || (!prev.fbs && p.fbs)) index.set(key, p);
+    }
+    indexCache.set(products, index);
+  }
+  for (const key of ozonOfferKeys(item)) {
+    const p = index.get(key);
+    if (p?.sku) return p;
+  }
   return null;
 }
 
