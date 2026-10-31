@@ -2,6 +2,7 @@ import "server-only";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { site } from "@/lib/site";
+import type { Order } from "@/lib/orders/types";
 import { cityCenter } from "./cdek";
 import { daysRange, fetchJson, memo } from "./http";
 import type { DeliveryOption, DeliveryPoint, DeliveryProvider, DeliveryQuery } from "./types";
@@ -14,14 +15,15 @@ import type { DeliveryOption, DeliveryPoint, DeliveryProvider, DeliveryQuery } f
  * (docs.ozon.ru/api/applications/#tag/Auth). refresh_token хранится в .data/ozon-oauth.json.
  *   OZON_APP_CLIENT_ID, OZON_APP_CLIENT_SECRET — из настроек приложения
  *   OZON_SELLER_ID — кабинет, который вправе авторизовать сайт (по умолчанию «Хочу Тент»)
- *   OZON_DELIVERY_SCHEMA — MIX (на выбор Ozon, по умолчанию), FBS или FBO
+ *   OZON_DELIVERY_SCHEMA — FBS (по умолчанию), FBO или MIX (на выбор Ozon)
  *   OZON_OAUTH_URL, OZON_SELLER_API_URL — адреса, если Ozon их сменит
  * Обратный URL в настройках приложения: https://xn----jtbybvccot.xn--p1ai/api/delivery/ozon/oauth/callback
  * Ozon считает доставку только для своих товаров: позиция корзины → SKU на Ozon (matchProduct).
  */
 const API = (process.env.OZON_SELLER_API_URL || "https://api-seller.ozon.ru").replace(/\/$/, "");
 const OAUTH = process.env.OZON_OAUTH_URL || "https://xapi.ozon.ru/oauth/token";
-const SCHEMA = process.env.OZON_DELIVERY_SCHEMA || "MIX";
+// заказчик работает только по FBS: товар у него, заказ он сам сдаёт в Ozon
+const SCHEMA = process.env.OZON_DELIVERY_SCHEMA || "FBS";
 const SELLER_ID = process.env.OZON_SELLER_ID || "2492755";
 /** права, которые сайт просит у продавца: доставка, чтение товаров, отправлений и складов */
 const SCOPES = ["seller-api.ozon-logistics", "seller-api.product-read-only", "seller-api.posting-fbs-read-only", "seller-api.posting-fbo-read-only", "seller-api.warehouse"];
@@ -250,11 +252,31 @@ function cityPoints(city: string) {
   });
 }
 
+type Range = { from: string; to: string };
 type Split = {
   commissions?: { total?: { amount: string; currency: string } } | null;
   unavailable_reason?: string;
-  delivery_method?: { unavailable_reason?: string; timeslots?: { client_date_range?: { from: string; to: string } }[] };
+  warehouse_id?: number;
+  items?: { sku: number; offer_id?: string; quantity: number }[];
+  delivery_method?: {
+    id?: number;
+    delivery_type?: string;
+    unavailable_reason?: string;
+    timeslots?: { timeslot_id?: number; client_date_range?: Range; logistic_date_range?: Range }[];
+  };
 };
+
+type Line = { sku: number; offerId: string; qty: number };
+
+/** Варианты доставки Ozon до пункта выдачи для этих товаров. */
+async function checkout(lines: Line[], pointId: string) {
+  const r = await sellerApi<{ splits?: Split[] }>("/v2/delivery/checkout", {
+    delivery_schema: SCHEMA,
+    delivery_type: { pick_up: { map_point_id: Number(pointId) } },
+    items: lines.map((l) => ({ sku: l.sku, offer_id: l.offerId, quantity: l.qty })),
+  });
+  return r.splits ?? [];
+}
 
 const REASON: Record<string, string> = {
   OUT_OF_STOCK: "товара нет на складе Ozon",
@@ -282,12 +304,7 @@ export const ozon: DeliveryProvider = {
 
     const pointId = q.pointId || (await cityPoints(q.city))[0]?.id;
     if (!pointId) return [{ ...base, cost: null, unavailable: true, note: "нет пунктов Ozon в этом городе" }];
-    const r = await sellerApi<{ splits?: Split[] }>("/v2/delivery/checkout", {
-      delivery_schema: SCHEMA,
-      delivery_type: { pick_up: { map_point_id: Number(pointId) } },
-      items: items.map(({ i, p }) => ({ sku: p!.sku, offer_id: p!.offerId, quantity: i.qty })),
-    });
-    const splits = r.splits ?? [];
+    const splits = await checkout(items.map(({ i, p }) => ({ sku: p!.sku, offerId: p!.offerId, qty: i.qty })), pointId);
     const bad = splits.find((s) => !s.commissions?.total || reasonOf(s));
     if (!splits.length || bad) {
       const reason = bad && reasonOf(bad);
@@ -301,4 +318,76 @@ export const ozon: DeliveryProvider = {
   },
 
   points: ({ city }) => cityPoints(city),
+
+  /**
+   * Заказ в Ozon по схеме FBS: проверяем доставку до выбранного пункта и создаём заказ покупателя.
+   * Отправление появится в кабинете Ozon (FBS → Отправления): продавец собирает его и сдаёт, как обычный заказ.
+   * Доставку покупателю Ozon не выставляем: она посчитана на сайте и идёт по правилам сайта.
+   */
+  async createOrder(order: Order) {
+    const d = order.delivery;
+    if (d.method !== "carrier" || d.service !== "ozon") throw new Error("Заказ не для Ozon");
+    if (!d.point) throw new Error("Не выбран пункт выдачи Ozon — оформите заказ в кабинете Ozon");
+    const products = await ozonProducts();
+    const lines = order.items.map((item) => {
+      const p = matchProduct(item, products);
+      if (!p?.sku) throw new Error(`Нет такого товара на Ozon: ${item.title}, ${item.size}`);
+      return { item, p };
+    });
+    const splits = await checkout(lines.map(({ item, p }) => ({ sku: p.sku, offerId: p.offerId, qty: item.qty })), d.point.id);
+    const bad = splits.find((s) => !s.commissions?.total || reasonOf(s));
+    if (!splits.length || bad) {
+      const reason = bad && reasonOf(bad);
+      throw new Error((reason && REASON[reason]) || `Ozon не доставит заказ в пункт ${d.point.id}${reason ? ` (${reason})` : ""}`);
+    }
+
+    // «Фамилия Имя»: на сайте при оплате просим именно так
+    const parts = order.customer.name.trim().split(/\s+/);
+    const person = { first: parts[1] ?? parts[0], last: parts[0], middle: parts.slice(2).join(" ") || undefined };
+    const phone = "+" + order.customer.phone.replace(/\D/g, "");
+    const r = await sellerApi<{ order_number?: string }>("/v2/order/create", {
+      delivery_schema: SCHEMA,
+      buyer: { first_name: person.first, last_name: person.last, middle_name: person.middle, phone },
+      recipient: { recipient_first_name: person.first, recipient_last_name: person.last, recipient_middle_name: person.middle, recipient_phone: phone },
+      delivery: { pick_up: { map_point_id: Number(d.point.id) } },
+      splits: splits.map((s) => {
+        const slot = s.delivery_method?.timeslots?.[0];
+        if (!s.delivery_method?.id || !slot?.logistic_date_range || !slot.timeslot_id || !s.warehouse_id) throw new Error("Ozon не вернул срок или склад для доставки");
+        return {
+          delivery_method: {
+            delivery_method_id: s.delivery_method.id,
+            delivery_type: s.delivery_method.delivery_type,
+            logistic_date_range: slot.logistic_date_range,
+            timeslot_id: slot.timeslot_id,
+          },
+          warehouse_id: s.warehouse_id,
+          items: (s.items ?? []).map((x) => {
+            const line = lines.find((l) => l.p.sku === x.sku);
+            return { sku: x.sku, offer_id: x.offer_id ?? line?.p.offerId, quantity: x.quantity, price: { currency_code: "RUB", units: Math.round(line?.item.price ?? 0), nanos: 0 } };
+          }),
+        };
+      }),
+    });
+    if (!r.order_number) throw new Error("Ozon не вернул номер заказа");
+    return { carrierOrderId: r.order_number };
+  },
+
+  /** Трек-номер отправления FBS по номеру заказа Ozon; пока Ozon его не присвоил — null. */
+  async getTrack(orderNumber) {
+    type Posting = { order_number: string; posting_number: string; tracking_number?: string };
+    const to = new Date();
+    const since = new Date(to.getTime() - 30 * 86_400_000);
+    for (let offset = 0; offset < 5000; offset += 1000) {
+      const r = await sellerApi<{ result?: { postings?: Posting[]; has_next?: boolean } }>("/v3/posting/fbs/list", {
+        dir: "ASC",
+        filter: { since: since.toISOString(), to: to.toISOString() },
+        limit: 1000,
+        offset,
+      });
+      const hit = r.result?.postings?.find((x) => x.order_number === orderNumber && x.tracking_number);
+      if (hit) return hit.tracking_number!;
+      if (!r.result?.has_next) break;
+    }
+    return null;
+  },
 };
