@@ -33,6 +33,8 @@ const APP_STORE_SCOPES = ["seller-app-store-api.me", "seller-app-store-api.payme
 const TOKEN_FILE = path.join(process.cwd(), ".data", "ozon-oauth.json");
 /** пункты Ozon ищем в этом радиусе от центра города, км */
 const RADIUS_KM = 25;
+/** В Москве и Петербурге пунктов Ozon тысячи: сто-триста ближайших к центру не покрывают город. */
+const MAX_POINTS = 3000;
 
 /** Обратный URL — в punycode, как его хранит Ozon. */
 export const ozonRedirectUri = () => `${new URL(site.url).origin}/api/delivery/ozon/oauth/callback`;
@@ -243,24 +245,29 @@ function cityPoints(city: string) {
       .map((p) => ({ id: p.map_point_id, d: km(center, { lat: p.coordinate.lat, lon: p.coordinate.long }) }))
       .filter((p) => p.d <= RADIUS_KM)
       .sort((a, b) => a.d - b.d)
-      .slice(0, 300)
+      .slice(0, MAX_POINTS)
       .map((p) => String(p.id));
     const points: DeliveryPoint[] = [];
-    for (let i = 0; i < ids.length; i += 100) {
-      const r = await sellerApi<{ points?: PointInfo[] }>("/v1/delivery/point/info", { map_point_ids: ids.slice(i, i + 100) });
-      for (const p of r.points ?? []) {
-        if (!p.enabled) continue;
-        const m = p.delivery_method;
-        const period = m.working_hours?.[0]?.periods?.[0];
-        points.push({
-          id: String(m.map_point_id),
-          name: m.name,
-          address: m.address,
-          lat: m.coordinates.lat,
-          lon: m.coordinates.long,
-          workTime: period ? `сегодня ${hhmm(period.min)}–${hhmm(period.max)}` : undefined,
-        });
-      }
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
+    const infos: PointInfo[][] = [];
+    // по пять запросов одновременно: тысячи пунктов за один проход, но без шквала к API
+    for (let i = 0; i < chunks.length; i += 5) {
+      const part = await Promise.all(chunks.slice(i, i + 5).map((c) => sellerApi<{ points?: PointInfo[] }>("/v1/delivery/point/info", { map_point_ids: c })));
+      infos.push(...part.map((r) => r.points ?? []));
+    }
+    for (const p of infos.flat()) {
+      if (!p.enabled) continue;
+      const m = p.delivery_method;
+      const period = m.working_hours?.[0]?.periods?.[0];
+      points.push({
+        id: String(m.map_point_id),
+        name: m.name,
+        address: m.address,
+        lat: m.coordinates.lat,
+        lon: m.coordinates.long,
+        workTime: period ? `сегодня ${hhmm(period.min)}–${hhmm(period.max)}` : undefined,
+      });
     }
     // point/info не держит порядок — возвращаем ближние первыми
     const order = new Map(ids.map((id, n) => [id, n]));

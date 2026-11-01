@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   if (!provider.ready() || !provider.points) return NextResponse.json({ points: [] });
   try {
     const points = await provider.points({ city, parcels: toParcels(resolveItems(body.items)) });
-    return NextResponse.json({ points: points.slice(0, 500) });
+    return NextResponse.json({ points: points.slice(0, 3000) });
   } catch (e) {
     if (e instanceof CheckoutError) return NextResponse.json({ error: e.message }, { status: 400 });
     console.error(`[delivery] ${service.id} points:`, e instanceof Error ? e.message : e);
