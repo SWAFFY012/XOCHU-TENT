@@ -373,7 +373,8 @@ export const ozon: DeliveryProvider = {
     // «Фамилия Имя»: на сайте при оплате просим именно так
     const parts = order.customer.name.trim().split(/\s+/);
     const person = { first: parts[1] ?? parts[0], last: parts[0], middle: parts.slice(2).join(" ") || undefined };
-    const phone = "+" + order.customer.phone.replace(/\D/g, "");
+    // Ozon принимает телефон только цифрами, 10–15 знаков: «79773999837», без «+»
+    const phone = order.customer.phone.replace(/\D/g, "");
     const r = await sellerApi<{ order_number?: string }>("/v2/order/create", {
       delivery_schema: SCHEMA,
       buyer: { first_name: person.first, last_name: person.last, middle_name: person.middle, phone },
