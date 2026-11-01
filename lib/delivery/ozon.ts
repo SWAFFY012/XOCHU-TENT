@@ -407,18 +407,14 @@ export const ozon: DeliveryProvider = {
   async getTrack(orderNumber) {
     type Posting = { order_number: string; posting_number: string; tracking_number?: string };
     const to = new Date();
-    const since = new Date(to.getTime() - 30 * 86_400_000);
-    for (let offset = 0; offset < 5000; offset += 1000) {
-      const r = await sellerApi<{ result?: { postings?: Posting[]; has_next?: boolean } }>("/v3/posting/fbs/list", {
-        dir: "ASC",
-        filter: { since: since.toISOString(), to: to.toISOString() },
-        limit: 1000,
-        offset,
-      });
-      const hit = r.result?.postings?.find((x) => x.order_number === orderNumber && x.tracking_number);
-      if (hit) return hit.tracking_number!;
-      if (!r.result?.has_next) break;
-    }
-    return null;
+    const since = new Date(to.getTime() - 60 * 86_400_000);
+    // /v3/posting/fbs/list Ozon отключил 31.08.2026; в v4 отправление ищется по номеру заказа
+    const r = await sellerApi<{ postings?: Posting[] }>("/v4/posting/fbs/list", {
+      sort_dir: "ASC",
+      filter: { order_numbers: [orderNumber], since: since.toISOString(), to: to.toISOString() },
+      limit: 100,
+      cursor: "",
+    });
+    return r.postings?.find((x) => x.order_number === orderNumber && x.tracking_number)?.tracking_number ?? null;
   },
 };
