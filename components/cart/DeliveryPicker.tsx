@@ -88,7 +88,10 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
   }, [pointsKey]);
   // выбранный пункт действует, пока не сменились служба, город или корзина
   const point = picked?.key === pointsKey ? picked.point : null;
-  const setPoint = (p: DeliveryPoint) => setPicked({ key: pointsKey, point: p });
+  const setPoint = (p: DeliveryPoint) => {
+    setPicked({ key: pointsKey, point: p });
+    setQuery("");
+  };
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -182,35 +185,45 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
             </p>
           ) : hasPoints ? (
             <>
-              <PointsMap points={points.list} selected={point?.id} onSelect={setPoint} />
-              <label className="relative">
-                <span className="sr-only">Поиск пункта по адресу</span>
-                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-soft" aria-hidden />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Улица или метро" className="field min-h-11 py-2 pl-9" />
-              </label>
-              <ul id="f-point" tabIndex={-1} className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-2xl border-[1.5px] border-line p-1.5" aria-label="Пункты выдачи">
-                {shown.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => setPoint(p)}
-                      aria-pressed={point?.id === p.id}
-                      className="flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left text-sm hover:bg-ink/5 aria-pressed:bg-ink aria-pressed:text-paper"
-                    >
-                      <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
-                      <span className="min-w-0">
-                        <span className="block font-semibold">{p.address}</span>
-                        {p.workTime && <span className="block text-xs opacity-75">{p.workTime}</span>}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-                {!shown.length && <li className="px-2.5 py-2 text-sm text-ink-soft">Ничего не нашли — измените запрос.</li>}
-              </ul>
+              {!point && (
+                <>
+                <PointsMap points={points.list} onSelect={setPoint} />
+                <label className="relative">
+                  <span className="sr-only">Поиск пункта по адресу</span>
+                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-soft" aria-hidden />
+                  <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Улица или метро" className="field min-h-11 py-2 pl-9" />
+                </label>
+                <ul id="f-point" tabIndex={-1} className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-2xl border-[1.5px] border-line p-1.5" aria-label="Пункты выдачи">
+                  {shown.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => setPoint(p)}
+                        className="flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left text-sm hover:bg-ink/5"
+                      >
+                        <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
+                        <span className="min-w-0">
+                          <span className="block font-semibold">{p.address}</span>
+                          {p.workTime && <span className="block text-xs opacity-75">{p.workTime}</span>}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                  {!shown.length && <li className="px-2.5 py-2 text-sm text-ink-soft">Ничего не нашли — измените запрос.</li>}
+                </ul>
+                </>
+              )}
               {point && (
-                <p className="rounded-xl bg-ink/5 px-3 py-2.5 text-sm">
-                  <b className="font-semibold">Пункт выдачи:</b> {point.address}
-                </p>
+                <div className="flex items-start gap-2 rounded-2xl border-[1.5px] border-ink bg-ink/5 px-3 py-2.5 text-sm">
+                  <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  <p className="min-w-0 flex-1">
+                    <b className="block font-semibold">Пункт выдачи: {point.address}</b>
+                    {point.workTime && <span className="block text-xs text-ink-soft">{point.workTime}</span>}
+                  </p>
+                  <button type="button" onClick={() => setPicked(null)} className="shrink-0 font-semibold underline underline-offset-2">
+                    Другой пункт
+                  </button>
+                </div>
               )}
               {errors.point && <p className="text-sm text-danger">{errors.point}</p>}
             </>
