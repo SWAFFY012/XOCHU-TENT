@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Alumni_Sans, Golos_Text, Jost, Manrope, Tektur, Unbounded } from "next/font/google";
 import { Header } from "@/components/layout/Header";
+import { ChatWidget } from "@/components/assistant/ChatWidget";
 import { Footer } from "@/components/layout/Footer";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { site } from "@/lib/site";
@@ -96,6 +97,7 @@ export default function RootLayout({ children, modal }: LayoutProps<"/">) {
           {children}
         </main>
         <Footer />
+        <ChatWidget />
         {modal}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }} />
       </body>
