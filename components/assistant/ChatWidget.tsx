@@ -18,8 +18,14 @@ function format(text: string, onNavigate: () => void): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
-  const link = (label: string, href: string, key: number) =>
-    href.startsWith("/") ? (
+  // модель иногда пишет адрес своего сайта целиком: такая ссылка должна открываться в этой же вкладке
+  const link = (label: string, raw: string, key: number) => {
+    let href = raw;
+    try {
+      const u = new URL(raw);
+      if (u.hostname === location.hostname) href = u.pathname + u.search + u.hash;
+    } catch {}
+    return href.startsWith("/") ? (
       <Link key={key} href={href} onClick={onNavigate} className="font-medium text-oxford underline underline-offset-2">
         {label}
       </Link>
@@ -28,6 +34,7 @@ function format(text: string, onNavigate: () => void): ReactNode[] {
         {label}
       </a>
     );
+  };
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
     if (m[1]) out.push(link(m[1], m[2], m.index));
