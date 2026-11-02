@@ -5,9 +5,45 @@
 // 3. Перезапускается после деплоя: когда меняется tmp/restart.txt, перестаёт принимать запросы и завершается,
 //    хостинг поднимает новый процесс со свежей сборкой на следующем запросе (сам Hostland restart.txt не отслеживает).
 // Остальные запросы обрабатывает Next.js (next-server.js — это server.js из .next/standalone).
+// 4. Применяет server-update.tgz: .next/server (около 700 мелких файлов, которые меняются при каждой сборке) приходит
+//    по FTP одним архивом, потому что FTP Hostland тратит на каждый файл около секунды.
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { execFileSync } = require("child_process");
+
+function applyUpdate() {
+  const archive = path.join(__dirname, "server-update.tgz");
+  if (!fs.existsSync(archive)) return;
+  const next = path.join(__dirname, ".next");
+  const fresh = path.join(next, "server.new");
+  const old = path.join(next, "server.old");
+  const current = path.join(next, "server");
+  let swapped = false;
+  try {
+    fs.rmSync(fresh, { recursive: true, force: true });
+    fs.mkdirSync(fresh, { recursive: true });
+    execFileSync("tar", ["-xzf", archive, "-C", fresh, "--strip-components=1"], { timeout: 120_000 });
+    // архив битый или пустой — старый .next/server остаётся как есть
+    if (!fs.existsSync(path.join(fresh, "pages-manifest.json"))) throw new Error("в архиве нет .next/server");
+    fs.rmSync(old, { recursive: true, force: true });
+    if (fs.existsSync(current)) fs.renameSync(current, old);
+    swapped = true;
+    fs.renameSync(fresh, current);
+    fs.rmSync(archive, { force: true });
+    fs.rm(old, { recursive: true, force: true }, () => {});
+    console.log("[hostland] .next/server обновлён из server-update.tgz");
+  } catch (e) {
+    console.error("[hostland] не удалось применить server-update.tgz:", e.message);
+    // возвращаем прежний .next/server, а архив откладываем, чтобы не пробовать снова при каждом запуске
+    if (swapped && !fs.existsSync(current) && fs.existsSync(old)) fs.renameSync(old, current);
+    fs.rmSync(fresh, { recursive: true, force: true });
+    try {
+      fs.renameSync(archive, archive + ".bad");
+    } catch {}
+  }
+}
+applyUpdate();
 
 const ACME_DIR = path.join(__dirname, "../../htdocs/www/.well-known/acme-challenge");
 const PREFIX = "/.well-known/acme-challenge/";

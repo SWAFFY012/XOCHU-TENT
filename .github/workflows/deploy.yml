@@ -10,6 +10,8 @@
 # Выгружается собранная папка .next/standalone (server.js, next-server.js, node_modules, .next, public, data).
 # Файлы, которых нет в сборке (.env с токеном Telegram, логи), на сервере не трогаются:
 # действие удаляет только то, что само загрузило раньше.
+# .next/server — около 700 мелких файлов, меняющихся при каждой сборке, а FTP Hostland тратит на файл около секунды.
+# Поэтому он идёт одним архивом server-update.tgz (curl), а обёртка hostland/server.js распаковывает его при запуске.
 # После кода обновляется tmp/restart.txt — обёртка hostland/server.js замечает это и перезапускает приложение.
 
 name: Deploy to Hostland
@@ -63,6 +65,27 @@ jobs:
           echo "${GITHUB_SHA::7} $(date -u +%FT%TZ)" > .next/standalone/public/version.txt
           mkdir -p restart
           date -u +%FT%TZ > restart/restart.txt
+          # .next/server одним архивом (внутри папка server/)
+          mkdir -p archive
+          tar -czf archive/server-update.tgz -C .next/standalone/.next server
+          ls -lh archive/server-update.tgz
+
+      # Архив кладём первым: если выгрузка не прошла, живой сайт ещё не тронут.
+      # Сначала файл .part, потом переименование — чтобы обёртка не подхватила недогруженный архив.
+      - name: Upload .next/server archive via FTP
+        if: env.FTP_PASSWORD != '' && env.APP_DIR != ''
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+        run: |
+          dir="${APP_DIR#./}"
+          base="ftp://${FTP_SERVER}/${dir}"
+          curl --fail --show-error --silent --retry 3 --retry-delay 5 --connect-timeout 30 --max-time 900 \
+            --user "${FTP_USERNAME}:${FTP_PASSWORD}" \
+            -T archive/server-update.tgz "${base}server-update.tgz.part"
+          curl --fail --show-error --silent --connect-timeout 30 --max-time 120 \
+            --user "${FTP_USERNAME}:${FTP_PASSWORD}" "${base}" \
+            -Q "RNFR ${dir}server-update.tgz.part" -Q "RNTO ${dir}server-update.tgz" -o /dev/null
 
       - name: Upload app via FTP (код)
         if: env.FTP_PASSWORD != '' && env.APP_DIR != ''
@@ -80,6 +103,8 @@ jobs:
             **/.git*
             **/.git*/**
             public/products/**
+            .next/server
+            .next/server/**
 
       - name: Restart Passenger
         if: env.FTP_PASSWORD != '' && env.APP_DIR != ''
