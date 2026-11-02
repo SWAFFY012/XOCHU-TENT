@@ -1,6 +1,7 @@
 import "server-only";
 import { systemPrompt } from "./knowledge";
 import { complete, type GigaMessage } from "./gigachat";
+import { calcPrice, calcPriceFunction } from "./price";
 import { webLookup, webLookupFunction } from "./web";
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -25,15 +26,21 @@ function enqueue<T>(job: () => Promise<T>): Promise<T> {
   return run;
 }
 
+const FUNCTIONS = [webLookupFunction, calcPriceFunction];
+const tools: Record<string, (args: Record<string, unknown>) => unknown | Promise<unknown>> = {
+  web_lookup: (a) => webLookup(String(a.query ?? "")),
+  calc_price: calcPrice,
+};
+
 const FALLBACK = "Не получилось подобрать ответ. Позвоните нам или напишите в Telegram — подскажем.";
 
-/** Ответ на вопрос с историей диалога. Модель может один-два раза обратиться к web_lookup за внешним источником. */
+/** Ответ на вопрос с историей диалога. Модель может обратиться к web_lookup (внешний источник) и calc_price (цена размера). */
 export function answer(history: ChatTurn[]): Promise<string> {
   return enqueue(async () => {
     const messages: GigaMessage[] = [{ role: "system", content: systemPrompt() }, ...history];
-    for (let step = 0; step < 3; step++) {
+    for (let step = 0; step < 4; step++) {
       // на последнем шаге функции не передаём — модель обязана ответить текстом
-      const { message, finish } = await complete(messages, step < 2 ? [webLookupFunction] : undefined);
+      const { message, finish } = await complete(messages, step < 3 ? FUNCTIONS : undefined);
       if (finish === "blacklist") return "С такой темой я не помогу. Спросите про тенты, шторы, окна, сетки, доставку или оплату.";
 
       const call = message.function_call;
@@ -41,7 +48,7 @@ export function answer(history: ChatTurn[]): Promise<string> {
 
       const args = typeof call.arguments === "string" ? safeParse(call.arguments) : call.arguments;
       messages.push({ role: "assistant", content: message.content ?? "", functions_state_id: message.functions_state_id, function_call: call });
-      const result = call.name === "web_lookup" ? await webLookup(String(args.query ?? "")) : { error: "неизвестная функция" };
+      const result = (await tools[call.name]?.(args)) ?? { error: "неизвестная функция" };
       messages.push({ role: "function", name: call.name, content: JSON.stringify(result) });
     }
     return FALLBACK;
