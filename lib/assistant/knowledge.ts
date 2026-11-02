@@ -11,6 +11,9 @@ import { deliveryPayment, deliveryServices, materialSpecs, quoteOnlyProducts, si
 
 const list = (xs: readonly string[]) => xs.join(", ");
 
+/** Пропускает воздух: у брезента и сетки — да (так заявлено на сайте), у материалов с покрытием — нет. Модель любит приписывать «дышит» всем. */
+const breathes = (material: string) => (material === "brezent" || material === "mesh" ? "дышит, пропускает воздух" : "не дышит, воздух не пропускает");
+
 /** До n размеров по порядку возрастания площади для одной пропитки/варианта — ориентир по ценам. */
 function sampleSizes(slug: string, option: string | undefined, n = 5) {
   const p = getProduct(slug);
@@ -33,7 +36,7 @@ function productSection(slug: string) {
     `Раздел: ${categories.find((c) => c.id === p.category)?.title}. Материал: ${materials[p.material].title}.`,
     copy?.short && `Кратко: ${copy.short}.`,
     ...(copy?.body ?? []),
-    `Плотность: ${spec?.density ?? base.density}. Температура: ${spec?.temp ?? base.temp}.`,
+    `Плотность: ${spec?.density ?? base.density}. Температура: ${spec?.temp ?? base.temp}. Воздух: ${breathes(p.material)}.`,
     ...(spec?.extra?.length ? [`Особенности: ${list(spec.extra)}.`] : []),
     productUses[slug] && `Для чего берут: ${list(productUses[slug])}.`,
     p.options.length > 1 || optionSpecs[slug]
@@ -68,12 +71,12 @@ function build() {
     "",
     "# МАТЕРИАЛЫ",
     Object.entries(materials)
-      .map(([id, m]) => `- ${m.title}: ${m.text} Плотность ${materialSpecs[id].density}, температура ${materialSpecs[id].temp}.`)
+      .map(([id, m]) => `- ${m.title}: ${m.text} Плотность ${materialSpecs[id].density}, температура ${materialSpecs[id].temp}. Воздух: ${breathes(id)}.`)
       .join("\n"),
     "Пропитки брезента: ВО — водоупорная (держит водяной столб 50 мм), ОП — огнеупорная (выдерживает открытый огонь 30–40 секунд), СКПВ — от гнили и плесени.",
     "",
     "# СРАВНЕНИЕ МАТЕРИАЛОВ (только то, что заявлено на сайте; чего здесь нет, о том не утверждай)",
-    "- Дышит, не создаёт парникового эффекта: брезент, теневая сетка. У Оксфорда и ПВХ воздухопроницаемость не заявлена: не говори, что они дышат.",
+    "- Дышит, не создаёт парникового эффекта: только брезент и теневая сетка. Оксфорд, ПВХ и прозрачный ПВХ НЕ дышат: воздух не пропускают, под ними возможен конденсат. Никогда не называй «дышит» плюсом Оксфорда или ПВХ.",
     "- Вода: ПВХ и прозрачный ПВХ не пропускают воду совсем; Оксфорд водостойкий (1000 PU), но не «полностью водонепроницаемый»; брезент отталкивает воду только с пропиткой ВО.",
     "- Огонь: выдерживает открытый огонь 30–40 секунд только брезент с пропиткой ОП. Остальные материалы огнеупорными не называй.",
     "- Гниль и плесень: защищает пропитка СКПВ у брезента.",
