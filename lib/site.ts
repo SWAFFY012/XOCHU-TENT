@@ -30,7 +30,7 @@ export const site = {
   /** отгрузка в службы доставки */
   shipDays: "ежедневно, кроме 31 декабря и 1 января",
   // Точка «ХОЧУТЕНТ» в Яндекс Картах
-  map: { lat: 59.951195, lon: 30.580512 },
+  map: { lat: 59.935169, lon: 30.545352 }, // координаты организации в Яндекс Картах (oid yandexOrgId)
   yandexOrgId: "181363525341",
   yandexOrgUrl: "https://yandex.ru/maps/org/khochutent/181363525341/",
   yandexVerification: "", // TODO: код из Яндекс Вебмастера
