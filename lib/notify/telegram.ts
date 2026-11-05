@@ -2,6 +2,12 @@ import "server-only";
 
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/**
+ * Адрес API Telegram. С российского хостинга api.telegram.org не открывается (таймаут), поэтому запросы можно пустить
+ * через посредника за границей: TELEGRAM_API_URL=https://<имя>.<аккаунт>.workers.dev (код — hostland/telegram-relay-worker.js).
+ */
+const apiBase = () => (process.env.TELEGRAM_API_URL || "https://api.telegram.org").replace(/\/$/, "");
+
 /** Получатели: TELEGRAM_CHAT_ID — один или несколько чатов через запятую (личные ID менеджеров и/или группа). */
 const chatIds = () => (process.env.TELEGRAM_CHAT_ID ?? "").split(/[,;\s]+/).filter(Boolean);
 
@@ -25,7 +31,7 @@ export async function sendToTelegram(text: string): Promise<TelegramResult[]> {
       const chat = "…" + chatId.slice(-3);
       if (!token) return { chat, ok: false, detail: "нет TELEGRAM_BOT_TOKEN" };
       try {
-        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        const res = await fetch(`${apiBase()}/bot${token}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),

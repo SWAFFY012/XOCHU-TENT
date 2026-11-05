@@ -74,3 +74,9 @@ Settings → Secrets and variables → Actions:
 
 После деплоя откройте `https://хочу-тент.рф/version.txt`: там короткий номер коммита и время
 последней выгрузки. Лог деплоя — вкладка Actions в репозитории.
+
+## 5. Telegram с российского хостинга
+
+`api.telegram.org` с серверов Hostland не открывается (таймаут, видно по кнопке «Проверить Telegram» в `/admin`). Сообщения менеджерам
+идут через бесплатный Cloudflare Worker: код в `hostland/telegram-relay-worker.js`, инструкция в его шапке. Адрес воркера записывается
+в `.env` как `TELEGRAM_API_URL`; без него сайт ходит в Telegram напрямую. Воркер пересылает только `sendMessage`, токена бота в нём нет.
