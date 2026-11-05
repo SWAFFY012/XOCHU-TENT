@@ -10,6 +10,7 @@ import { ORDER_STATUSES, STATUS_LABEL, type Order } from "@/lib/orders/types";
 import { logout, setStatus } from "./actions";
 import { LoginForm } from "./LoginForm";
 import { ShipmentForm } from "./ShipmentForm";
+import { TelegramTest } from "./TelegramTest";
 
 export const metadata: Metadata = {
   title: "Заказы",
@@ -46,11 +47,14 @@ async function AdminContent() {
   const orders = await listOrders();
   return (
     <div className="flex flex-col gap-4">
-      <form action={logout} className="-mt-3 self-end">
-        <button type="submit" className="text-sm text-ink-soft underline underline-offset-2">
-          Выйти
-        </button>
-      </form>
+      <div className="-mt-3 flex flex-col items-end gap-2">
+        <form action={logout}>
+          <button type="submit" className="text-sm text-ink-soft underline underline-offset-2">
+            Выйти
+          </button>
+        </form>
+        <TelegramTest />
+      </div>
       {!orders.length && <p className="text-ink-soft">Заказов пока нет.</p>}
       {orders.map((o) => (
         <OrderCard key={o.id} o={o} />

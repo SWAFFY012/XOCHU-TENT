@@ -8,7 +8,7 @@ import { createShipment as createOrderShipment } from "@/lib/orders/shipment";
 import { getOrder, updateOrder } from "@/lib/orders/store";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/orders/types";
 import { sendEmail } from "@/lib/notify/email";
-import { esc, notifyManager } from "@/lib/notify/telegram";
+import { esc, notifyManager, sendToTelegram, telegramReady } from "@/lib/notify/telegram";
 
 // Перебор пароля: после 5 неудач подряд — пауза на 10 минут (в памяти процесса)
 let fails = { n: 0, until: 0 };
@@ -98,4 +98,12 @@ export async function refreshTrack(_: string | null, form: FormData): Promise<st
   } catch (e) {
     return e instanceof Error ? e.message : String(e);
   }
+}
+
+/** Проверка Telegram: тестовое сообщение во все чаты и результат по каждому (причина, если не дошло). */
+export async function testTelegram(): Promise<string | null> {
+  if (!(await isAdmin())) return "Нет доступа.";
+  if (!telegramReady()) return "Telegram не настроен: в .env нет TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID.";
+  const results = await sendToTelegram("✅ Проверка связи: сайт «Хочу Тент» пишет в этот чат. Сюда будут приходить заказы, оплаты и отправления.");
+  return results.map((r) => `${r.chat}: ${r.detail}`).join("\n");
 }
