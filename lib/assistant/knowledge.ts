@@ -64,7 +64,7 @@ function build() {
   return [
     "# СПРАВКА О МАГАЗИНЕ",
     `Магазин «${site.name}» (${site.domain}) — производство и продажа тентов, штор, мягких окон, теневых сеток и тканей на отрез. Производство и самовывоз: ${site.address}. ${site.hours}.`,
-    `Телефон: ${site.phone}. Почта: ${site.email}. Telegram: ${site.telegram}. Менеджер перезванивает в течение ${site.responseTime} в рабочее время. Рейтинг на Ozon ${site.ozonStats.rating}, отзывов ${site.ozonStats.reviews}.`,
+    `Телефон: ${site.phone}. Почта: ${site.email}. Telegram: ${site.telegram}. WhatsApp: ${site.whatsapp}. Менеджер перезванивает в течение ${site.responseTime} в рабочее время. Рейтинг на Ozon ${site.ozonStats.rating}, отзывов ${site.ozonStats.reviews}.`,
     "",
     "# РАЗДЕЛЫ КАТАЛОГА",
     categories.map((c) => `- ${c.title}: ${c.lead}`).join("\n"),

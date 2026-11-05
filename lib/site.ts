@@ -17,7 +17,7 @@ export const site = {
   phoneHref: "tel:+79884186886",
   email: "xochu.tent@mail.ru",
   telegram: "https://t.me/tentgroup1",
-  whatsapp: "https://wa.me/79000000000", // TODO: номер WhatsApp — заказчик пришлёт
+  whatsapp: "https://api.whatsapp.com/message/D4NM63NZ7AMVC1?autoload=1&app_absent=0", // ссылка на чат WhatsApp от заказчика
   ozon: "https://www.ozon.ru/seller/hochutent/",
   city: "Янино-1",
   region: "Ленинградская область",
