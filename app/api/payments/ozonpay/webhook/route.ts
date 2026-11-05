@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { paidText } from "@/lib/orders/messages";
+import { autoShip } from "@/lib/orders/shipment";
 import { updateOrder } from "@/lib/orders/store";
 import { notifyManager, telegramReady } from "@/lib/notify/telegram";
 import { bitrixReady, commentBitrixDeal } from "@/lib/notify/bitrix";
@@ -50,6 +51,8 @@ export async function POST(req: Request) {
       order.crm?.bitrixDealId ? commentBitrixDeal(order.crm.bitrixDealId, text) : null,
       telegramReady() || !bitrixReady() ? notifyManager(text) : null,
     ]);
+    // отправление создаём после ответа Ozon: создание в СДЭК занимает несколько секунд, а повтор уведомления не нужен
+    after(() => autoShip(order).catch((e) => console.error(`[shipment] заказ ${order.id}:`, e)));
   }
   // Формат ответа в документации не задан: Ozon достаточно кода 200
   return NextResponse.json({ ok: true });
