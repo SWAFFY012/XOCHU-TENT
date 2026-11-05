@@ -124,7 +124,8 @@ function OrderCard({ o }: { o: Order }) {
       </div>
 
       <div className="flex flex-col gap-3 self-start">
-        <form action={setStatus} className="flex flex-col gap-2">
+        {/* key: после сохранения React сбрасывает поля к старым значениям; с новым key форма пересоздаётся с актуальным статусом и треком */}
+        <form key={`${o.status}|${o.delivery.method === "carrier" ? (o.delivery.track ?? "") : ""}`} action={setStatus} className="flex flex-col gap-2">
           <input type="hidden" name="id" value={o.id} />
           <label className="text-sm font-semibold" htmlFor={`st-${o.id}`}>
             Статус
