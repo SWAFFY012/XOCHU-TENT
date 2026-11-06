@@ -53,7 +53,7 @@ export function Header() {
           overHero ? "text-paper" : "bg-chalk/85 text-ink shadow-[0_1px_0_var(--color-line)] backdrop-blur-md",
         )}
       >
-        <div className="wrap flex h-16 items-center gap-4 md:h-20">
+        <div className="wrap flex h-16 items-center gap-4 max-[389px]:gap-3 max-[339px]:gap-2 md:h-20">
           <Link href="/" className="mr-auto shrink-0 md:mr-0" aria-label="Хочу Тент — на главную">
             <Logo />
           </Link>
@@ -108,7 +108,7 @@ export function Header() {
 
           <button
             type="button"
-            className="grid size-11 place-items-center rounded-full md:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded-full md:hidden"
             onClick={() => setMenu((m) => !m)}
             aria-expanded={menu}
             aria-label={menu ? "Закрыть меню" : "Открыть меню"}

@@ -26,10 +26,15 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
   const revealHero = useCallback(() => setIntroReady(true), []);
   const started = useRef(false);
   const playHero = useCallback(() => {
-    if (!video.current) return;
+    const v = video.current;
+    if (!v) return;
     started.current = true;
-    video.current.currentTime = VIDEO_START;
-    void video.current.play().catch(() => undefined);
+    // Режим экономии трафика: остаётся постер. Файл грузим только сейчас, после заставки, чтобы он не отнимал канал у картинок.
+    if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
+    // <source media> в video браузеры не поддерживают, поэтому версию под экран выбираем сами
+    v.src = window.matchMedia("(max-width: 767px)").matches ? "/hero-480.mp4" : "/hero-720.mp4";
+    v.currentTime = VIDEO_START;
+    void v.play().catch(() => undefined);
   }, []);
 
   // Видео не крутится, когда первый экран ушёл из вида: меньше нагрузки при прокрутке
@@ -66,16 +71,13 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
     <RapidLayersIntro onReveal={revealHero} onComplete={playHero} />
     <section ref={ref} className="hero-scale relative isolate flex min-h-[100svh] items-end overflow-hidden bg-tarp text-paper">
       <motion.div className="absolute inset-0 -z-10" style={reduce ? undefined : { scale: videoScale }}>
-        <video ref={video} onLoadedMetadata={(event) => { event.currentTarget.currentTime = VIDEO_START; }} className="h-full w-full object-cover" muted loop playsInline preload="auto" poster="/intro/video-start-1920.webp" aria-hidden>
-          <source src="/hero-720.mp4" type="video/mp4" media="(max-width: 767px)" />
-          <source src="/hero.mp4" type="video/mp4" />
-        </video>
+        <video ref={video} onLoadedMetadata={(event) => { event.currentTarget.currentTime = VIDEO_START; }} className="h-full w-full object-cover" muted loop playsInline preload="auto" poster="/intro/video-start-1920.webp" aria-hidden />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,27,21,.55)_0%,rgba(22,27,21,.2)_35%,rgba(22,27,21,.85)_100%)]" />
       </motion.div>
       {/* затемнение растёт по мере прокрутки — переход в следующую секцию */}
       <motion.div className="pointer-events-none absolute inset-0 -z-10 bg-ink" style={reduce ? { opacity: 0 } : { opacity: shade }} />
 
-      <motion.div className="wrap pt-24 pb-10 md:pt-28 md:pb-28 md:[@media(max-height:820px)]:pb-20" style={reduce ? undefined : { y: textY, opacity: fade }}>
+      <motion.div className="wrap pt-24 pb-24 md:pt-28 md:pb-28 md:[@media(max-height:820px)]:pb-20" style={reduce ? undefined : { y: textY, opacity: fade }}>
         <HeroTitle reduce={!!reduce} ready={introReady} />
 
         <p className="font-jost mt-4 text-[0.95rem] leading-snug text-paper/85 md:mt-5 md:text-[length:calc(1.45rem*var(--hero-k,1))] md:text-paper/90">
@@ -86,7 +88,7 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
           Своё производство под Петербургом — шьём любые размеры за {site.productionDays}.
         </p>
 
-        <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-4 md:mt-7 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-6">
+        <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-4 md:mt-7 md:gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
             {/* живая «размерная лента»: сезонные товары с реальными ценами из прайса */}
             <Link

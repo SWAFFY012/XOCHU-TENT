@@ -53,18 +53,14 @@ function format(text: string, onNavigate: () => void): ReactNode[] {
  * Знак ассистента: жёлтый люверс (как на тентах) с речевым пузырём, в котором четырёхконечная искра.
  * Искру вырезаем в самом пузыре (evenodd), поэтому сквозь неё виден жёлтый фон люверса.
  */
-function Mark({ size, open = false }: { size: number; open?: boolean }) {
+function Mark({ className, open = false }: { className: string; open?: boolean }) {
   return (
-    <span
-      className="relative grid shrink-0 place-items-center rounded-full bg-strap text-ink shadow-[inset_0_-3px_0_var(--color-strap-deep)]"
-      style={{ width: size, height: size }}
-      aria-hidden
-    >
+    <span className={clsx("relative grid shrink-0 place-items-center rounded-full bg-strap text-ink shadow-[inset_0_-3px_0_var(--color-strap-deep)]", className)} aria-hidden>
       <span className="absolute inset-[4px] rounded-full ring-1 ring-ink/20" />
       {open ? (
-        <X size={size * 0.46} strokeWidth={2.4} />
+        <X className="size-[46%]" strokeWidth={2.4} />
       ) : (
-        <svg viewBox="0 0 24 24" width={size * 0.54} height={size * 0.54} fill="currentColor" fillRule="evenodd">
+        <svg viewBox="0 0 24 24" className="size-[54%]" fill="currentColor" fillRule="evenodd">
           <path d="M8.5 3.5h7A3.5 3.5 0 0 1 19 7v6.5a3.5 3.5 0 0 1-3.5 3.5H11l-4 3.8V17h-.5A3.5 3.5 0 0 1 3 13.5V7a3.5 3.5 0 0 1 3.5-3.5h2ZM12 6.6l1.05 2.75L15.8 10.4l-2.75 1.05L12 14.2l-1.05-2.75L8.2 10.4l2.75-1.05L12 6.6Z" />
         </svg>
       )}
@@ -175,7 +171,7 @@ export function ChatWidget() {
             className="fixed right-4 bottom-[5.9rem] z-[35] flex h-[min(38rem,calc(100dvh-7.5rem))] w-[min(26rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-[28px] bg-paper shadow-[0_28px_70px_-18px_rgb(22_27_21/0.55)] ring-1 ring-line sm:right-6 sm:bottom-[6.4rem]"
           >
             <header className="flex items-center gap-3 border-b-2 border-dashed border-strap/60 bg-tarp px-4 py-3.5 text-paper">
-              <Mark size={42} />
+              <Mark className="size-[42px]" />
               <div className="mr-auto min-w-0 leading-tight">
                 <p className="text-[1.05rem] font-semibold">ИИ-ассистент</p>
                 <p className="truncate text-[0.8rem] text-paper/70">Товары, цены и доставка</p>
@@ -256,7 +252,7 @@ export function ChatWidget() {
               exit={{ opacity: 0, y: 6, scale: 0.97 }}
               transition={{ duration: dur(0.3), ease }}
               style={{ transformOrigin: "bottom right" }}
-              className="absolute right-2 bottom-[calc(100%+0.9rem)] w-[15.5rem] rounded-2xl border border-dashed border-seam bg-paper py-3 pr-9 pl-4 text-[0.9rem] leading-snug shadow-[0_16px_36px_-14px_rgb(22_27_21/0.5)]"
+              className="absolute right-2 bottom-[calc(100%+0.9rem)] w-[15.5rem] max-sm:hidden rounded-2xl border border-dashed border-seam bg-paper py-3 pr-9 pl-4 text-[0.9rem] leading-snug shadow-[0_16px_36px_-14px_rgb(22_27_21/0.5)]"
             >
               Подскажу по материалам, размерам и цене. Спросите!
               <button type="button" onClick={dismissHint} aria-label="Скрыть подсказку" className="absolute top-1.5 right-1.5 grid size-7 place-items-center rounded-full text-ink-soft hover:bg-chalk">
@@ -277,15 +273,15 @@ export function ChatWidget() {
           aria-label={open ? "Закрыть чат с ИИ-ассистентом" : "Открыть чат с ИИ-ассистентом"}
           className={clsx(
             "group relative flex items-center gap-3 rounded-full bg-tarp text-paper shadow-[0_16px_36px_-12px_rgb(22_27_21/0.7)] transition-[padding,transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 active:scale-95",
-            open ? "p-1.5" : "py-1.5 pr-6 pl-1.5",
+            open ? "p-1.5" : "py-1.5 pr-6 pl-1.5 max-sm:pr-5",
           )}
         >
           {/* шов по краю, как подгиб на тенте */}
           <span aria-hidden className="pointer-events-none absolute inset-[3px] rounded-full border border-dashed border-paper/25" />
-          <Mark size={open ? 48 : 58} open={open} />
+          <Mark className={open ? "size-12" : "size-[52px] sm:size-[58px]"} open={open} />
           <span className={clsx("grid overflow-hidden text-left leading-tight transition-[max-width,opacity] duration-300", open ? "max-w-0 opacity-0" : "max-w-60 opacity-100")}>
             <span className="text-[1.08rem] font-semibold whitespace-nowrap">ИИ-ассистент</span>
-            <span className="text-[0.8rem] whitespace-nowrap text-paper/70">Подскажет по товарам и цене</span>
+            <span className="text-[0.8rem] whitespace-nowrap text-paper/70 max-sm:hidden">Подскажет по товарам и цене</span>
           </span>
         </button>
       </div>
