@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalArticle } from "@/components/legal/LegalArticle";
+import { YM_ID } from "@/lib/metrika";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -60,6 +61,13 @@ export default function PrivacyPage() {
             Сайт хранит состав корзины в локальном хранилище вашего браузера, чтобы он не пропадал между визитами. Эти данные не
             передаются на сервер, пока вы не оформите заказ.
           </p>
+          {YM_ID ? (
+            <p className="mt-3">
+              Чтобы понимать, как посетители пользуются сайтом, мы используем сервис Яндекс Метрика (ООО «Яндекс»). Он сохраняет cookie
+              и собирает обезличенные данные о посещениях: просмотренные страницы, источник перехода, действия на сайте и записи
+              сеансов (Вебвизор). Отключить cookie можно в настройках браузера, сайт продолжит работать.
+            </p>
+          ) : null}
         </section>
     </LegalArticle>
   );

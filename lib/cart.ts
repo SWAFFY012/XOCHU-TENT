@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { goals, pushEcommerce, reachGoal } from "./metrika";
 import type { CartItem } from "./types";
 
 type CartState = {
@@ -22,7 +23,7 @@ export const useCart = create<CartState>()(
     (set) => ({
       items: [],
       bump: 0,
-      add: (item, qty = 1) =>
+      add: (item, qty = 1) => {
         set((s) => {
           const key = itemKey(item);
           const existing = s.items.find((i) => i.key === key);
@@ -30,7 +31,11 @@ export const useCart = create<CartState>()(
             ? s.items.map((i) => (i.key === key ? { ...i, qty: Math.min(99, i.qty + qty) } : i))
             : [...s.items, { ...item, key, qty }];
           return { items, bump: s.bump + 1 };
-        }),
+        });
+        // Метрика: цель и событие электронной коммерции (вне set, чтобы он оставался чистым)
+        reachGoal(goals.addToCart, { slug: item.slug, price: item.price });
+        pushEcommerce("add", [{ id: item.slug, name: item.title, price: item.price, quantity: qty, variant: item.size || undefined }]);
+      },
       setQty: (key, qty) =>
         set((s) => ({ items: s.items.map((i) => (i.key === key ? { ...i, qty: Math.max(1, Math.min(99, qty)) } : i)) })),
       remove: (key) => set((s) => ({ items: s.items.filter((i) => i.key !== key) })),

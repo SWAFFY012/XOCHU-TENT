@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { CheckCircle2, Clock3 } from "lucide-react";
+import { PurchaseTracker } from "@/components/analytics/PurchaseTracker";
 import { getOrder } from "@/lib/orders/store";
 import { paymentsEnabled, site } from "@/lib/site";
 
@@ -53,6 +54,13 @@ async function Result({ searchParams }: { searchParams: PageProps<"/order/succes
 
   return (
     <div className="rounded-[32px] bg-tarp p-6 text-paper md:p-14">
+      {paid && order && (
+        <PurchaseTracker
+          orderId={order.id}
+          total={order.total}
+          products={order.items.map((i) => ({ id: i.slug, name: i.title, price: i.price, quantity: i.qty, variant: i.size || undefined }))}
+        />
+      )}
       {paid || lead || !paymentsEnabled ? (
         <CheckCircle2 className="size-14 text-strap" aria-hidden />
       ) : (

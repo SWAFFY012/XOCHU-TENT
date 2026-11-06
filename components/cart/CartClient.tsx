@@ -12,6 +12,7 @@ import { ProductArt } from "@/components/ProductArt";
 import { PaymentBadges } from "@/components/PaymentBadges";
 import { cartTotal, cartWeight, useCart, useHydrated } from "@/lib/cart";
 import { formatArea, formatPrice, formatSize, formatWeight } from "@/lib/format";
+import { goals, reachGoal } from "@/lib/metrika";
 import type { DeliveryOption } from "@/lib/delivery/types";
 import { deliveryPayment, isQuoteOnly, paymentsEnabled, routeUrl, site } from "@/lib/site";
 
@@ -124,6 +125,8 @@ export function CartClient() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Заказ не отправился.");
+      // Метрика: заявка или заказ оформлены (оплата считается отдельно, на странице «Заказ оплачен»)
+      reachGoal(intent === "lead" ? goals.leadSubmit : goals.orderSubmit, { order_price: total });
       clear();
       if (data.paymentUrl) window.location.assign(data.paymentUrl);
       else router.push(`/order/success?order=${encodeURIComponent(data.id)}`);
