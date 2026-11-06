@@ -32,7 +32,7 @@ export function Hero({ samples, nextId }: { samples: HeroSample[]; nextId: strin
     // Режим экономии трафика: остаётся постер. Файл грузим только сейчас, после заставки, чтобы он не отнимал канал у картинок.
     if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
     // <source media> в video браузеры не поддерживают, поэтому версию под экран выбираем сами
-    v.src = window.matchMedia("(max-width: 767px)").matches ? "/hero-480.mp4" : "/hero-720.mp4";
+    v.src = window.matchMedia("(max-width: 767px)").matches ? "/hero-mobile.mp4" : "/hero-720.mp4";
     v.currentTime = VIDEO_START;
     void v.play().catch(() => undefined);
   }, []);
