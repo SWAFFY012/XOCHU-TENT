@@ -424,10 +424,14 @@ export function CartClient() {
             <PaymentBadges compact className="text-ink-soft" />
 
             <div className="seam text-line" />
-            <button type="submit" name="intent" value="lead" disabled={sending} className="flex items-center justify-center gap-2 text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline disabled:opacity-60">
-              {sending && status.intent === "lead" && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              Нужен расчёт? <span className="font-semibold text-oxford">Оставить заявку менеджеру</span>
-            </button>
+            <div className="flex flex-col gap-2 text-center">
+              <p className="text-base font-semibold">Нужен расчёт или есть пожелания?</p>
+              <button type="submit" name="intent" value="lead" disabled={sending} className="btn btn-ghost min-h-12 w-full text-base font-semibold text-oxford disabled:opacity-60">
+                {sending && status.intent === "lead" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Send className="size-5" aria-hidden />}
+                Оставить заявку менеджеру
+              </button>
+              <p className="text-sm text-ink-soft">Позвоним, уточним детали и назовём цену. Платить сейчас не нужно.</p>
+            </div>
           </>
         )}
       </div>
