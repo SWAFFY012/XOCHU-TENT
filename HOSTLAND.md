@@ -60,6 +60,7 @@ Settings → Secrets and variables → Actions:
 - `NEXT_PUBLIC_SITE_URL` — основной домен, по умолчанию `https://хочу-тент.рф`;
 - `NEXT_PUBLIC_PAYMENTS_ENABLED` — `true`, когда подключена оплата Ozon Pay (по умолчанию выключена);
 - `NEXT_PUBLIC_YANDEX_MAPS_KEY` — ключ Яндекс Карт для выбора пункта выдачи в корзине;
+- `NEXT_PUBLIC_YM_ID` — номер счётчика Яндекс Метрики (сейчас `114112716`); пусто — счётчик на сайт не подключается;
 - `HOSTLAND_APP_DIR` — каталог приложения от корня FTP, со слешем в конце:
   `./xn----jtbybvccot.xn--p1ai/projects/xochu-tent/`.
 
