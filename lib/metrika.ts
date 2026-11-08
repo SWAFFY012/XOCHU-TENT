@@ -26,6 +26,16 @@ export const goals = {
   telegramClick: "telegram_click", // клик по Telegram
   whatsappClick: "whatsapp_click", // клик по WhatsApp
   ozonClick: "ozon_click", // переход в магазин на Ozon
+  // Просмотр секций главной (SectionTracker): секция была на экране нужное время
+  hero10s: "hero_10s", // 10 секунд на первом экране
+  hero30s: "hero_30s", // 30 секунд на первом экране
+  viewSeason: "view_season", // блок «Готовы к зиме»
+  viewCalc: "view_calc", // калькулятор нестандартного размера
+  viewProcess: "view_process", // «Как мы шьём»: этапы производства
+  viewCustomSize: "view_custom_size", // «Любой размер за 1–3 дня»
+  viewMaterials: "view_materials", // сравнение материалов
+  viewFaq: "view_faq", // частые вопросы
+  viewCta: "view_cta", // финальный призыв
 } as const;
 
 export type Goal = (typeof goals)[keyof typeof goals];

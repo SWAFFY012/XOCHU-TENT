@@ -18,8 +18,11 @@ export function PanelChapter({
   speed = 1.4,
   className,
   mobilePanelClassName = "h-[100svh]",
+  id,
 }: {
   panels: ((p: PanelArgs) => ReactNode)[];
+  /** якорь секции: по нему Метрика считает время просмотра */
+  id?: string;
   speed?: number;
   className?: string;
   /** высота панели в вертикальном режиме (телефон) */
@@ -44,7 +47,7 @@ export function PanelChapter({
 
   if (reduce || mobile) {
     return (
-      <section ref={section} className={className}>
+      <section ref={section} id={id} className={className}>
         {panels.map((render, index) => (
           <VerticalPanel key={index} index={index} total={panels.length} render={render} className={mobilePanelClassName} />
         ))}
@@ -53,7 +56,7 @@ export function PanelChapter({
   }
 
   return (
-    <section ref={section} className={className} style={{ height: `calc(100vh + ${distance * speed}px)` }}>
+    <section ref={section} id={id} className={className} style={{ height: `calc(100vh + ${distance * speed}px)` }}>
       <div className="sticky top-0 h-screen overflow-hidden">
         <motion.div style={{ x }} className="flex h-full w-max will-change-transform">
           {panels.map((render, index) => (
