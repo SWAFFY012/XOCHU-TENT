@@ -28,9 +28,10 @@ function StepNumber({ n, p }: { n: number; p: PanelArgs }) {
  * Этапы производства: полноэкранные панели уезжают влево.
  * Фото — фоном во весь экран, поверх — огромное название этапа и одна строка текста.
  */
-export function ProcessChapter({ steps }: { steps: ProcessStep[] }) {
+export function ProcessChapter({ steps, id }: { steps: ProcessStep[]; id?: string }) {
   return (
     <PanelChapter
+      id={id}
       className="bg-ink text-paper"
       speed={0.55}
       panels={steps.map((s, i) => (p: PanelArgs) => (
@@ -141,9 +142,10 @@ function Stat({ label, value }: { label: string; value: number }) {
  * Материалы: фото занимает правую треть панели во всю высоту, огромное название
  * заходит на фото последними буквами — на фото они светлые (дубликат текста с обрезкой по краю фото).
  */
-export function MaterialsChapter({ items }: { items: MaterialPanel[] }) {
+export function MaterialsChapter({ items, id }: { items: MaterialPanel[]; id?: string }) {
   return (
     <PanelChapter
+      id={id}
       className="bg-paper"
       speed={0.55}
       mobilePanelClassName="border-t border-line first:border-t-0"

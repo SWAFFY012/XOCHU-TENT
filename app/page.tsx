@@ -5,6 +5,7 @@ import { Faq } from "@/components/home/Faq";
 import { MaterialsChapter, ProcessChapter } from "@/components/home/Chapters";
 import { BigStatement } from "@/components/home/BigStatement";
 import { Season } from "@/components/home/Season";
+import { SectionTracker } from "@/components/analytics/SectionTracker";
 import { SplitReveal } from "@/components/motion/SplitReveal";
 import { Marquee } from "@/components/motion/Marquee";
 import { SectionReveal } from "@/components/motion/SectionReveal";
@@ -90,6 +91,7 @@ export default function Home() {
 
   return (
     <>
+      <SectionTracker />
       <Hero samples={samples} nextId="season" />
 
       {/* сезон: тёмная секция продолжает затемнение hero */}
@@ -144,10 +146,10 @@ export default function Home() {
       />
 
       {/* этапы: панели быстро уезжают вправо */}
-      <ProcessChapter steps={STEPS.map((x) => ({ title: x.t, text: x.d, image: x.img }))} />
+      <ProcessChapter id="process" steps={STEPS.map((x) => ({ title: x.t, text: x.d, image: x.img }))} />
 
       {/* поворот лабиринта: вниз — крупная фраза */}
-      <section className="bg-chalk py-28 text-center md:py-44">
+      <section id="custom-size" className="bg-chalk py-28 text-center md:py-44">
         <div className="wrap">
           <SplitReveal
             text="Любой размер"
@@ -165,6 +167,7 @@ export default function Home() {
 
       {/* материалы: панели во весь экран */}
       <MaterialsChapter
+        id="materials"
         items={compare.map((m) => ({
           id: m.id,
           title: m.title,
@@ -179,7 +182,7 @@ export default function Home() {
 
 
       {/* вопросы */}
-      <SectionReveal variant="curtain" className="wrap py-20 md:py-28">
+      <SectionReveal variant="curtain" id="faq" className="wrap py-20 md:py-28">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.4fr]">
           <SplitReveal text="Частые вопросы" className="text-[clamp(3.6rem,7.5vw,9rem)] leading-[0.95]" />
           <Faq />
@@ -187,7 +190,7 @@ export default function Home() {
       </SectionReveal>
 
       {/* финальный призыв */}
-      <SectionReveal variant="unroll" className="wrap py-20 md:py-28">
+      <SectionReveal variant="unroll" id="cta" className="wrap py-20 md:py-28">
           <div>
             <SplitReveal text={`Пришлите размеры — посчитаем за ${site.responseTime}`} className="max-w-[19ch] text-[clamp(4rem,10vw,12rem)] leading-[0.95]" />
             <p className="mt-6 max-w-[46ch] text-xl md:text-2xl">

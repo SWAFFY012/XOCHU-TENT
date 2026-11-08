@@ -26,9 +26,33 @@ export const goals = {
   telegramClick: "telegram_click", // клик по Telegram
   whatsappClick: "whatsapp_click", // клик по WhatsApp
   ozonClick: "ozon_click", // переход в магазин на Ozon
+  // Просмотр секций главной (SectionTracker): секция была на экране нужное время
+  hero10s: "hero_10s", // 10 секунд на первом экране
+  hero30s: "hero_30s", // 30 секунд на первом экране
+  viewSeason: "view_season", // блок «Готовы к зиме»
+  viewCalc: "view_calc", // калькулятор нестандартного размера
+  viewProcess: "view_process", // «Как мы шьём»: этапы производства
+  viewCustomSize: "view_custom_size", // «Любой размер за 1–3 дня»
+  viewMaterials: "view_materials", // сравнение материалов
+  viewFaq: "view_faq", // частые вопросы
+  viewCta: "view_cta", // финальный призыв
 } as const;
 
-export type Goal = (typeof goals)[keyof typeof goals];
+/**
+ * Активное время в разделах (PageTimeTracker): пороги в секундах. Идентификатор цели: time_<раздел>_<секунды>s,
+ * например time_cart_600s — десять минут в корзине.
+ */
+export const TIME_STEPS = {
+  about: [30, 60, 120, 300],
+  catalog: [30, 60, 120, 300, 600, 1200, 1800],
+  cart: [30, 60, 120, 300, 600, 1200, 1800],
+} as const;
+export type TimeSection = keyof typeof TIME_STEPS;
+export type TimeGoal = `time_${TimeSection}_${number}s`;
+
+export type Goal = (typeof goals)[keyof typeof goals] | TimeGoal;
+
+export const timeGoal = (section: TimeSection, sec: number) => `time_${section}_${sec}s` as TimeGoal;
 
 /** Отправляет достижение цели. Никогда не бросает исключений: аналитика не должна ломать заказ. */
 export function reachGoal(goal: Goal, params?: Record<string, unknown>) {
