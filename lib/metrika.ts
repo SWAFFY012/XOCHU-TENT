@@ -38,7 +38,21 @@ export const goals = {
   viewCta: "view_cta", // финальный призыв
 } as const;
 
-export type Goal = (typeof goals)[keyof typeof goals];
+/**
+ * Активное время в разделах (PageTimeTracker): пороги в секундах. Идентификатор цели: time_<раздел>_<секунды>s,
+ * например time_cart_600s — десять минут в корзине.
+ */
+export const TIME_STEPS = {
+  about: [30, 60, 120, 300],
+  catalog: [30, 60, 120, 300, 600, 1200, 1800],
+  cart: [30, 60, 120, 300, 600, 1200, 1800],
+} as const;
+export type TimeSection = keyof typeof TIME_STEPS;
+export type TimeGoal = `time_${TimeSection}_${number}s`;
+
+export type Goal = (typeof goals)[keyof typeof goals] | TimeGoal;
+
+export const timeGoal = (section: TimeSection, sec: number) => `time_${section}_${sec}s` as TimeGoal;
 
 /** Отправляет достижение цели. Никогда не бросает исключений: аналитика не должна ломать заказ. */
 export function reachGoal(goal: Goal, params?: Record<string, unknown>) {

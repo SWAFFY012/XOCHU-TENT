@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Alumni_Sans, Golos_Text, Jost, Manrope, Tektur, Unbounded } from "next/font/google";
 import { Suspense } from "react";
 import { YandexMetrika } from "@/components/analytics/YandexMetrika";
+import { PageTimeTracker } from "@/components/analytics/PageTimeTracker";
 import { Header } from "@/components/layout/Header";
 import { ChatWidget } from "@/components/assistant/ChatWidget";
 import { Footer } from "@/components/layout/Footer";
@@ -96,6 +97,7 @@ export default function RootLayout({ children, modal }: LayoutProps<"/">) {
         <SmoothScroll />
         <Suspense fallback={null}>
           <YandexMetrika />
+          <PageTimeTracker />
         </Suspense>
         <Header />
         <main id="main" className="flex flex-1 flex-col">
