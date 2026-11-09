@@ -15,7 +15,7 @@ export function ShipmentForm({ id, service, created }: { id: string; service: st
         {created ? "Обновить трек" : `Создать отправление в ${service}`}
       </button>
       {message && (
-        <p className="text-xs" role="status">
+        <p className="text-xs whitespace-pre-line break-words" role="status">
           {message}
         </p>
       )}

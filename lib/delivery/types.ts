@@ -64,4 +64,6 @@ export interface DeliveryProvider {
   createOrder?(order: Order): Promise<{ carrierOrderId: string; track?: string }>;
   /** Трек-номер созданного отправления, когда служба его присвоила. */
   getTrack?(carrierOrderId: string): Promise<string | null>;
+  /** Что служба знает об отправлении (статус, трек, штрихкоды), текстом для админки: когда трека ещё нет, видно, на каком этапе оно. */
+  describe?(carrierOrderId: string): Promise<string>;
 }

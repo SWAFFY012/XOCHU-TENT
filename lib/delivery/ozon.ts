@@ -320,6 +320,21 @@ const deliveryPrice = (amount?: string) => {
 const reasonOf = (s: Split) => [s.unavailable_reason, s.delivery_method?.unavailable_reason].find((r) => r && r !== "UNSPECIFIED");
 const daysUntil = (iso?: string) => (iso ? Math.max(1, Math.ceil((Date.parse(iso) - Date.now()) / 86_400_000)) : undefined);
 
+type Posting = Record<string, unknown> & { order_number?: string; tracking_number?: string };
+
+/** Отправления FBS по номеру заказа за последние 60 дней. /v3/posting/fbs/list Ozon отключил 31.08.2026; в v4 отправление ищется по номеру заказа. */
+async function postingsOf(orderNumber: string): Promise<Posting[]> {
+  const to = new Date();
+  const since = new Date(to.getTime() - 60 * 86_400_000);
+  const r = await sellerApi<{ postings?: Posting[] }>("/v4/posting/fbs/list", {
+    sort_dir: "ASC",
+    filter: { order_numbers: [orderNumber], since: since.toISOString(), to: to.toISOString() },
+    limit: 100,
+    cursor: "",
+  });
+  return r.postings ?? [];
+}
+
 export const ozon: DeliveryProvider = {
   id: "ozon",
   ready: () => Boolean(process.env.OZON_APP_CLIENT_ID && process.env.OZON_APP_CLIENT_SECRET),
@@ -405,16 +420,29 @@ export const ozon: DeliveryProvider = {
 
   /** Трек-номер отправления FBS по номеру заказа Ozon; пока Ozon его не присвоил — null. */
   async getTrack(orderNumber) {
-    type Posting = { order_number: string; posting_number: string; tracking_number?: string };
-    const to = new Date();
-    const since = new Date(to.getTime() - 60 * 86_400_000);
-    // /v3/posting/fbs/list Ozon отключил 31.08.2026; в v4 отправление ищется по номеру заказа
-    const r = await sellerApi<{ postings?: Posting[] }>("/v4/posting/fbs/list", {
-      sort_dir: "ASC",
-      filter: { order_numbers: [orderNumber], since: since.toISOString(), to: to.toISOString() },
-      limit: 100,
-      cursor: "",
-    });
-    return r.postings?.find((x) => x.order_number === orderNumber && x.tracking_number)?.tracking_number ?? null;
+    const postings = await postingsOf(orderNumber);
+    return postings.find((x) => x.order_number === orderNumber && x.tracking_number)?.tracking_number ?? null;
+  },
+
+  /** Статус, трек и штрихкоды отправления в Ozon: что видит продавец в кабинете, чтобы понять, почему трека нет. */
+  async describe(orderNumber) {
+    const postings = await postingsOf(orderNumber);
+    if (!postings.length) return `Ozon не находит отправление по номеру ${orderNumber} за последние 60 дней.`;
+    return postings
+      .map((p) => {
+        const dm = p.delivery_method as { name?: string; tpl_provider?: string } | undefined;
+        const code = (v: unknown) => (typeof v === "string" ? v : "");
+        const barcodes = p.barcodes as { upper_barcode?: string; lower_barcode?: string } | undefined;
+        return [
+          `Отправление ${code(p.posting_number) || "?"}: статус «${code(p.status) || "?"}»${p.substatus ? `, подстатус «${code(p.substatus)}»` : ""}`,
+          `трек: ${code(p.tracking_number) || "не присвоен"}`,
+          dm?.name ? `доставка: ${dm.name}${dm.tpl_provider ? ` (${dm.tpl_provider})` : ""}` : "",
+          barcodes?.upper_barcode || barcodes?.lower_barcode ? `штрихкоды: ${[barcodes.upper_barcode, barcodes.lower_barcode].filter(Boolean).join(", ")}` : "",
+          `поля ответа: ${Object.keys(p).join(", ")}`,
+        ]
+          .filter(Boolean)
+          .join("; ");
+      })
+      .join("\n");
   },
 };

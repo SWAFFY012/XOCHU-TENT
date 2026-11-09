@@ -89,7 +89,11 @@ export async function refreshTrack(_: string | null, form: FormData): Promise<st
   const provider = deliveryProviders[order.delivery.service];
   try {
     const track = await provider.getTrack?.(order.delivery.carrierOrderId);
-    if (!track) return "Служба ещё не присвоила номер — попробуйте позже.";
+    if (!track) {
+      // что служба знает об отправлении: статус и поля, чтобы было видно, на каком этапе оно и почему нет трека
+      const info = await provider.describe?.(order.delivery.carrierOrderId).catch((e) => `не удалось получить данные: ${e instanceof Error ? e.message : e}`);
+      return `Служба ещё не присвоила номер — попробуйте позже.${info ? `\n${info}` : ""}`;
+    }
     await updateOrder(order.id, (o) => {
       if (o.delivery.method === "carrier") o.delivery.track = track;
     });
