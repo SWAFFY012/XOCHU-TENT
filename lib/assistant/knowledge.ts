@@ -2,7 +2,7 @@ import "server-only";
 import { getAllSummaries, getProduct } from "@/lib/catalog";
 import { categories, faq, materials, optionSpecs, productCopy, productGuides, productSpecs, productUses, sizeLabels } from "@/lib/content";
 import { formatPrice, formatSize } from "@/lib/format";
-import { deliveryPayment, deliveryServices, materialSpecs, quoteOnlyProducts, site } from "@/lib/site";
+import { deliveryPayment, deliveryServices, materialSpecs, quoteAdvisedProducts, quoteOnlyProducts, site } from "@/lib/site";
 
 /**
  * Справка ассистента собирается из тех же данных, что рисуют сайт (lib/content.ts, lib/site.ts, data/products.json):
@@ -50,9 +50,11 @@ function productSection(slug: string) {
       : `Цена за м²: ${formatPrice(p.pricePerM2Median)}.`,
     `Цвета: ${list(p.colors)}.`,
     `Размеры: ${p.sizesCount} готовых (${a} × ${b}), площадь от ${p.areaMin} до ${p.areaMax} м². Цена в каталоге от ${formatPrice(p.priceFrom)} до ${formatPrice(p.priceTo)}.${p.options.length > 1 ? "" : ` Примеры: ${sampleSizes(slug, undefined)}.`}`,
-    quoteOnlyProducts.includes(slug)
-      ? "Заказывается заявкой: менеджер уточняет размер и присылает ссылку на оплату."
-      : "Свой размер: в карточке включить «Свой размер», цена = площадь × цена за м² (округляется вверх до 10 ₽), шьём 1–3 рабочих дня.",
+    quoteAdvisedProducts.includes(slug)
+      ? "Окно шьётся по точным размерам. Лучше сначала оставить заявку (менеджер проверит замер и крепление), но оплатить на сайте можно сразу. Свой размер: в карточке включить «Свой размер», цена = площадь × цена за м² (округляется вверх до 10 ₽), шьём 1–3 рабочих дня; окно своего размера возврату не подлежит."
+      : quoteOnlyProducts.includes(slug)
+        ? "Заказывается заявкой: менеджер уточняет размер и присылает ссылку на оплату."
+        : "Свой размер: в карточке включить «Свой размер», цена = площадь × цена за м² (округляется вверх до 10 ₽), шьём 1–3 рабочих дня.",
     ...(productGuides[slug] ?? []).map((g) => `${g.title}: ${g.steps.join(" ")}`),
   ];
   return lines.filter(Boolean).join("\n");

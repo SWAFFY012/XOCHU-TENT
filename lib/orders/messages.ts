@@ -1,7 +1,7 @@
 import "server-only";
 import { formatPrice, formatSize, formatWeight } from "@/lib/format";
 import { esc } from "@/lib/notify/telegram";
-import { deliveryPayment, deliveryServices, paymentsEnabled, site } from "@/lib/site";
+import { deliveryPayment, deliveryServices, isQuoteAdvised, paymentsEnabled, site } from "@/lib/site";
 import { STATUS_LABEL, type Order } from "./types";
 
 const CONTACT = { phone: "звонок", telegram: "Telegram", whatsapp: "WhatsApp" } as const;
@@ -18,6 +18,10 @@ export function deliveryLine(o: Order) {
   const cost = d.cost ? `${d.note ? "≈ " : ""}${formatPrice(d.cost)}${d.days ? `, ${d.days} дн.` : ""}` : "стоимость рассчитает менеджер";
   return `${serviceTitle(d.service)} ${how}, ${d.city}, ${where} — ${cost}${d.note ? ` (${d.note})` : ""}`;
 }
+
+/** Мягкие окна оплачены без согласования: менеджеру напоминаем уточнить замер и крепление. */
+const WINDOWS_NOTE = "🪟 В заказе мягкие окна: размеры не согласованы с менеджером, свяжитесь с покупателем и уточните замер и крепление.";
+const hasAdvised = (o: Order) => o.items.some((i) => isQuoteAdvised(i.slug));
 
 /** Сообщение менеджеру о новом заказе или заявке. */
 export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: string; paymentError?: string }) {
@@ -37,6 +41,8 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
     o.comment ? `💬 ${esc(o.comment)}` : null,
     "",
     ...lines,
+    "",
+    o.kind === "order" && hasAdvised(o) ? WINDOWS_NOTE : null,
     "",
     `Товары: <b>${formatPrice(o.itemsTotal)}</b>`,
     o.total !== o.itemsTotal ? `К оплате с доставкой: <b>${formatPrice(o.total)}</b>` : null,
@@ -64,7 +70,7 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
 }
 
 export const paidText = (o: Order) =>
-  `✅ <b>Заказ №${o.id} оплачен</b>: ${formatPrice(o.total)}\n${esc(o.customer.name)}, ${esc(o.customer.phone)}\n${esc(deliveryLine(o))}`;
+  `✅ <b>Заказ №${o.id} оплачен</b>: ${formatPrice(o.total)}\n${esc(o.customer.name)}, ${esc(o.customer.phone)}\n${esc(deliveryLine(o))}${hasAdvised(o) ? `\n${WINDOWS_NOTE}` : ""}`;
 
 export const statusText = (o: Order, note?: string) =>
   `🔄 Заказ №${o.id}: <b>${STATUS_LABEL[o.status]}</b>${note ? `\n${esc(note)}` : ""}`;

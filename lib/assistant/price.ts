@@ -1,7 +1,7 @@
 import "server-only";
 import { getAllSummaries, getProduct } from "@/lib/catalog";
 import { formatPrice, priceCustom } from "@/lib/format";
-import { isQuoteOnly, sizePricePerM2 } from "@/lib/site";
+import { isQuoteAdvised, isQuoteOnly, sizePricePerM2 } from "@/lib/site";
 
 /**
  * Цена изделия нужного размера — тем же расчётом, что у калькулятора на сайте и проверки заказа
@@ -27,7 +27,9 @@ export function calcPrice(a: Record<string, unknown>) {
   const ready = p.variants.filter((v) => v.option === option && sizes.has(v.size)).map((v) => v.price);
   const note = isQuoteOnly(p.slug, !ready.length)
     ? "заказывается заявкой: менеджер подтверждает цену"
-    : p.slug.startsWith("tkan-") && !ready.length
+    : isQuoteAdvised(p.slug)
+      ? "окно шьётся по точным размерам: лучше согласовать замер с менеджером (заявка), оплатить на сайте можно сразу"
+      : p.slug.startsWith("tkan-") && !ready.length
       ? "ткань продаётся метражом: цену отреза смотри в карточке товара"
       : undefined;
 

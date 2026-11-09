@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Send, Trash2 } from "lucide-react";
+import { CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Send, Trash2, TriangleAlert } from "lucide-react";
 import { DeliveryPicker } from "@/components/cart/DeliveryPicker";
 import { ShopMap } from "@/components/ShopMap";
 import { ProductArt } from "@/components/ProductArt";
@@ -14,7 +14,7 @@ import { cartTotal, cartWeight, useCart, useHydrated } from "@/lib/cart";
 import { formatArea, formatPrice, formatSize, formatWeight } from "@/lib/format";
 import { goals, reachGoal } from "@/lib/metrika";
 import type { DeliveryOption } from "@/lib/delivery/types";
-import { deliveryPayment, isQuoteOnly, paymentsEnabled, routeUrl, site } from "@/lib/site";
+import { deliveryPayment, isQuoteAdvised, isQuoteOnly, paymentsEnabled, routeUrl, site } from "@/lib/site";
 
 type Intent = "pay" | "lead";
 type Status = { state: "idle" } | { state: "sending"; intent: Intent } | { state: "error"; message: string };
@@ -58,8 +58,11 @@ export function CartClient() {
   const total = goods + shipping;
   const weight = cartWeight(items);
   const count = items.reduce((s, i) => s + i.qty, 0);
-  // окна и часть своих размеров — по заявке; старые позиции в корзине без флага тоже проверяем по товару
-  const needsQuote = items.some((i) => i.quote || isQuoteOnly(i.slug, i.custom));
+  // только заявкой: изделия из quoteOnlyProducts (по товару, а не по флагу позиции: в старых корзинах он мог остаться от окон)
+  const needsQuote = items.some((i) => isQuoteOnly(i.slug, i.custom));
+  // окна: оплатить можно, но лучше сначала согласовать размеры с менеджером
+  const advised = items.some((i) => isQuoteAdvised(i.slug));
+  const advisedCustom = items.some((i) => isQuoteAdvised(i.slug) && i.custom);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -188,11 +191,14 @@ export function CartClient() {
                   </p>
                   {i.custom && (
                     <span className="w-fit rounded-md bg-strap/30 px-1.5 py-0.5 text-xs font-semibold">
-                      {i.quote ? "Свой размер, цену подтвердит менеджер" : "Свой размер"}
+                      {isQuoteOnly(i.slug, true) ? "Свой размер, цену подтвердит менеджер" : "Свой размер"}
                     </span>
                   )}
                   {!i.custom && isQuoteOnly(i.slug, false) && (
                     <span className="w-fit rounded-md bg-strap/30 px-1.5 py-0.5 text-xs font-semibold">По заявке, цену подтвердит менеджер</span>
+                  )}
+                  {isQuoteAdvised(i.slug) && (
+                    <span className="w-fit rounded-md bg-strap/30 px-1.5 py-0.5 text-xs font-semibold">Размеры лучше согласовать с менеджером</span>
                   )}
                   <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
                     <div className="flex items-center rounded-full bg-ink/6">
@@ -415,6 +421,18 @@ export function CartClient() {
           </>
         ) : (
           <>
+            {advised && (
+              <div className="flex gap-3 rounded-2xl border border-strap/70 bg-strap/15 p-4 text-sm" role="note">
+                <TriangleAlert className="mt-0.5 size-5 shrink-0 text-strap-deep" aria-hidden />
+                <div className="flex flex-col gap-1.5">
+                  <p className="font-semibold">Окна шьются по точным размерам</p>
+                  <p className="text-ink-soft">
+                    Лучше сначала оставить заявку: менеджер проверит замер и крепление и назовёт итоговую цену. Оплатить можно и сразу, но тогда
+                    ошибку в размере исправить будет сложнее.{advisedCustom && " Окно вашего размера возврату не подлежит."}
+                  </p>
+                </div>
+              </div>
+            )}
             <button type="submit" name="intent" value="pay" disabled={sending} className="btn btn-strap min-h-14 w-full text-lg disabled:cursor-not-allowed disabled:opacity-50">
               {sending && status.intent === "pay" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CreditCard className="size-5" aria-hidden />}
               Оформить и оплатить
@@ -428,7 +446,7 @@ export function CartClient() {
 
             <div className="seam text-line" />
             <div className="flex flex-col gap-2 text-center">
-              <p className="text-base font-semibold">Нужен расчёт или есть пожелания?</p>
+              <p className="text-base font-semibold">{advised ? "Рекомендуем сначала согласовать размеры" : "Нужен расчёт или есть пожелания?"}</p>
               <button type="submit" name="intent" value="lead" disabled={sending} className="btn btn-ghost min-h-12 w-full text-base font-semibold text-oxford disabled:opacity-60">
                 {sending && status.intent === "lead" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Send className="size-5" aria-hidden />}
                 Оставить заявку менеджеру

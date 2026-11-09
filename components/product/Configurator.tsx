@@ -10,7 +10,7 @@ import { useCart } from "@/lib/cart";
 import { hexOf } from "@/lib/colors";
 import { priceCustom, estimateWeight, formatArea, formatPrice, formatWeight, parseSize } from "@/lib/format";
 import { sizeLabels } from "@/lib/content";
-import { isQuoteOnly, sizePricePerM2 } from "@/lib/site";
+import { isQuoteAdvised, isQuoteOnly, sizePricePerM2 } from "@/lib/site";
 import type { CompactVariants, ProductSummary } from "@/lib/types";
 
 export type Selection = { option: string; size: string; custom: boolean };
@@ -90,8 +90,10 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
   const customArea = customValid ? Math.round(w * l * 100) / 100 : 0;
   const perM2 = sizePricePerM2(p.slug, p.pricePerM2ByOption[p.options[option]] ?? p.pricePerM2Median, customArea, true);
   const customPrice = customValid ? priceCustom(customArea, perM2) : 0;
-  // Окна (любой размер) и свой размер у некоторых изделий — по заявке: цену и детали согласует менеджер
+  // Изделия из quoteOnlyProducts и свой размер у некоторых изделий — по заявке: цену и детали согласует менеджер
   const productQuote = isQuoteOnly(p.slug, false);
+  // Окна: оплатить можно, но замер лучше согласовать с менеджером
+  const advised = isQuoteAdvised(p.slug);
   const quoteOnly = isQuoteOnly(p.slug, custom);
 
   const unitPrice = custom ? customPrice : (priceBySize.get(current) ?? 0);
@@ -285,6 +287,11 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
         {qty > 1 && unitPrice > 0 && <p className="mt-1 text-sm text-paper/60">{formatPrice(unitPrice)} за штуку</p>}
         {productQuote && (
           <p className="mt-2 text-sm text-paper/70">Окна шьём по заявке: менеджер уточнит размеры и крепление, назовёт итоговую цену и пришлёт ссылку на оплату.</p>
+        )}
+        {advised && (
+          <p className="mt-2 text-sm text-paper/80">
+            Окна шьём по точным размерам. Не уверены в замере — после добавления в корзину оставьте заявку: менеджер проверит размеры и крепление. Оплатить можно и сразу.
+          </p>
         )}
         {unitWeight > 0 && (
           <p className="mt-2 flex items-center gap-2 text-sm text-paper/70">

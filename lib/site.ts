@@ -68,9 +68,16 @@ export const customQuoteOnly: readonly string[] = [];
 
 /**
  * Изделия только по заявке, в любом размере: менеджер обсуждает детали с покупателем
- * и потом присылает ссылку на оплату. Сейчас — мягкие окна (прозрачные и тонированные).
+ * и потом присылает ссылку на оплату. Сейчас пусто: мягкие окна можно оплатить на сайте (см. quoteAdvisedProducts).
  */
-export const quoteOnlyProducts: readonly string[] = ["myagkoe-okno", "myagkoe-okno-tonirovannoe"];
+export const quoteOnlyProducts: readonly string[] = [];
+
+/**
+ * Изделия, по которым лучше сначала связаться с менеджером (замер, крепление), но оплатить на сайте можно сразу:
+ * мягкие окна. В корзине и в карточке показывается предупреждение, а менеджеру в сообщении об оплате — пометка.
+ */
+export const quoteAdvisedProducts: readonly string[] = ["myagkoe-okno", "myagkoe-okno-tonirovannoe"];
+export const isQuoteAdvised = (slug: string) => quoteAdvisedProducts.includes(slug);
 
 /**
  * Цена 1 м² — прайс заказчика (28.10.2026) вместо цен Ozon из data/prices.xlsx.
