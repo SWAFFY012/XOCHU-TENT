@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Ban, Loader2, MapPin, Search } from "lucide-react";
+import { Ban, Info, Loader2, MapPin, Search } from "lucide-react";
 import type { DeliveryOption, DeliveryPoint } from "@/lib/delivery/types";
 import { formatPrice, plural } from "@/lib/format";
 import { deliveryServices, site } from "@/lib/site";
@@ -175,6 +175,19 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
           </p>
         )}
       </div>
+
+      {selected?.service === "ozon" && (
+        <div className="flex gap-3 rounded-2xl border border-strap/70 bg-strap/15 p-4 text-sm" role="note">
+          <Info className="mt-0.5 size-5 shrink-0 text-strap-deep" aria-hidden />
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold">Для получения в Ozon нужно приложение Ozon</p>
+            <p className="text-ink-soft">
+              Заказ в пункте Ozon выдают только по коду или штрихкоду из приложения. Они приходят на номер телефона из заказа: установите приложение и войдите
+              по этому номеру (регистрация бесплатная). Если приложения нет, выберите СДЭК.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* пункт выдачи */}
       {needPoints && (

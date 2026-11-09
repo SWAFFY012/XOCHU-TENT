@@ -19,6 +19,10 @@ export function deliveryLine(o: Order) {
   return `${serviceTitle(d.service)} ${how}, ${d.city}, ${where} — ${cost}${d.note ? ` (${d.note})` : ""}`;
 }
 
+/** Ozon выдаёт заказ только по коду или штрихкоду из приложения Ozon на номер получателя. */
+const OZON_NOTE = "📱 Ozon: получатель забирает заказ по коду из приложения Ozon, войдя по номеру из заказа (SMS без приложения не приходит).";
+const isOzon = (o: Order) => o.delivery.method === "carrier" && o.delivery.service === "ozon";
+
 /** Мягкие окна оплачены без согласования: менеджеру напоминаем уточнить замер и крепление. */
 const WINDOWS_NOTE = "🪟 В заказе мягкие окна: размеры не согласованы с менеджером, свяжитесь с покупателем и уточните замер и крепление.";
 const hasAdvised = (o: Order) => o.items.some((i) => isQuoteAdvised(i.slug));
@@ -43,6 +47,7 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
     ...lines,
     "",
     o.kind === "order" && hasAdvised(o) ? WINDOWS_NOTE : null,
+    isOzon(o) ? OZON_NOTE : null,
     "",
     `Товары: <b>${formatPrice(o.itemsTotal)}</b>`,
     o.total !== o.itemsTotal ? `К оплате с доставкой: <b>${formatPrice(o.total)}</b>` : null,
@@ -70,7 +75,7 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
 }
 
 export const paidText = (o: Order) =>
-  `✅ <b>Заказ №${o.id} оплачен</b>: ${formatPrice(o.total)}\n${esc(o.customer.name)}, ${esc(o.customer.phone)}\n${esc(deliveryLine(o))}${hasAdvised(o) ? `\n${WINDOWS_NOTE}` : ""}`;
+  `✅ <b>Заказ №${o.id} оплачен</b>: ${formatPrice(o.total)}\n${esc(o.customer.name)}, ${esc(o.customer.phone)}\n${esc(deliveryLine(o))}${hasAdvised(o) ? `\n${WINDOWS_NOTE}` : ""}${isOzon(o) ? `\n${OZON_NOTE}` : ""}`;
 
 export const statusText = (o: Order, note?: string) =>
   `🔄 Заказ №${o.id}: <b>${STATUS_LABEL[o.status]}</b>${note ? `\n${esc(note)}` : ""}`;
