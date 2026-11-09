@@ -438,7 +438,10 @@ export const ozon: DeliveryProvider = {
           `трек: ${code(p.tracking_number) || "не присвоен"}`,
           dm?.name ? `доставка: ${dm.name}${dm.tpl_provider ? ` (${dm.tpl_provider})` : ""}` : "",
           barcodes?.upper_barcode || barcodes?.lower_barcode ? `штрихкоды: ${[barcodes.upper_barcode, barcodes.lower_barcode].filter(Boolean).join(", ")}` : "",
-          `поля ответа: ${Object.keys(p).join(", ")}`,
+          // получатель и код получения: видно, на какой телефон Ozon считает заказ и подтверждена ли выдача
+          ...(["pickup_code_verified_at", "delivering_date", "addressee", "customer", "barcodes", "available_actions", "scanit"] as const).map((k) =>
+            k in p ? `${k}: ${JSON.stringify(p[k]).slice(0, 300)}` : "",
+          ),
         ]
           .filter(Boolean)
           .join("; ");
