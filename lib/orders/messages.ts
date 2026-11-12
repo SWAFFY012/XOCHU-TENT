@@ -1,7 +1,7 @@
 import "server-only";
 import { formatPrice, formatSize, formatWeight } from "@/lib/format";
 import { esc } from "@/lib/notify/telegram";
-import { deliveryPayment, deliveryServices, isQuoteAdvised, paymentsEnabled, site } from "@/lib/site";
+import { deliveryPayment, deliveryServices, isQuoteAdvised, site } from "@/lib/site";
 import { STATUS_LABEL, type Order } from "./types";
 
 const CONTACT = { phone: "звонок", telegram: "Telegram", whatsapp: "WhatsApp" } as const;
@@ -28,7 +28,7 @@ const WINDOWS_NOTE = "🪟 В заказе мягкие окна: размеры
 const hasAdvised = (o: Order) => o.items.some((i) => isQuoteAdvised(i.slug));
 
 /** Сообщение менеджеру о новом заказе или заявке. */
-export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: string; paymentError?: string }) {
+export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: string; paymentError?: string; paymentLabel?: string }) {
   const lines = o.items.map(
     (i, n) =>
       `${n + 1}. <b>${esc(i.title)}</b>\n   ${esc(formatSize(i.size))}${i.custom ? " (свой размер)" : ""}, ${esc(i.color)}${i.option !== "Стандарт" ? `, ${esc(i.option)}` : ""}\n   ${i.qty} шт × ${formatPrice(i.price)} = <b>${formatPrice(i.price * i.qty)}</b>${i.weight ? `\n   ${formatWeight(i.weight)}/шт${i.box ? `, упаковка ${i.box} см` : ""}` : ""}`,
@@ -54,8 +54,8 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
     o.weight ? `⚖️ Вес заказа ≈ ${formatWeight(o.weight)}` : null,
     o.kind === "order"
       ? opts.paymentUrl
-        ? "💳 Покупатель ушёл на оплату Ozon Pay — придёт уведомление об оплате."
-        : paymentsEnabled && opts.paymentError
+        ? `💳 Покупатель ушёл на оплату ${opts.paymentLabel ?? "Ozon Pay"} — придёт уведомление об оплате.`
+        : opts.paymentError
           ? `⚠️ Платёж не создался (${esc(opts.paymentError)}) — отправьте покупателю ссылку на оплату.`
           : "💳 Онлайн-оплата выключена — отправьте покупателю ссылку на оплату."
       : null,
@@ -74,8 +74,10 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
     .join("\n");
 }
 
+const providerLabel = (o: Order) => (o.payment.provider === "yandexpay" ? (o.payment.method === "split" ? " (Яндекс Сплит)" : " (Яндекс Пэй)") : "");
+
 export const paidText = (o: Order) =>
-  `✅ <b>Заказ №${o.id} оплачен</b>: ${formatPrice(o.total)}\n${esc(o.customer.name)}, ${esc(o.customer.phone)}\n${esc(deliveryLine(o))}${hasAdvised(o) ? `\n${WINDOWS_NOTE}` : ""}${isOzon(o) ? `\n${OZON_NOTE}` : ""}`;
+  `✅ <b>Заказ №${o.id} оплачен${providerLabel(o)}</b>: ${formatPrice(o.total)}\n${esc(o.customer.name)}, ${esc(o.customer.phone)}\n${esc(deliveryLine(o))}${hasAdvised(o) ? `\n${WINDOWS_NOTE}` : ""}${isOzon(o) ? `\n${OZON_NOTE}` : ""}`;
 
 export const statusText = (o: Order, note?: string) =>
   `🔄 Заказ №${o.id}: <b>${STATUS_LABEL[o.status]}</b>${note ? `\n${esc(note)}` : ""}`;

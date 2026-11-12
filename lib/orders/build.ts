@@ -8,6 +8,8 @@ import type { ContactMethod, Order, OrderDelivery, OrderItem } from "./types";
 /** Что присылает корзина. Цены и веса не принимаем — считаем по прайсу. */
 export type CheckoutBody = {
   intent?: string;
+  /** способ онлайн-оплаты: ozon (по умолчанию), yandex или split */
+  method?: string;
   name?: string;
   phone?: string;
   email?: string;

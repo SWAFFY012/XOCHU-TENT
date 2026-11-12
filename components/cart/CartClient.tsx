@@ -4,8 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Send, Trash2, TriangleAlert } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarClock, CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Send, Trash2, TriangleAlert, Wallet } from "lucide-react";
 import { DeliveryPicker } from "@/components/cart/DeliveryPicker";
 import { ShopMap } from "@/components/ShopMap";
 import { ProductArt } from "@/components/ProductArt";
@@ -16,7 +16,8 @@ import { goals, reachGoal } from "@/lib/metrika";
 import type { DeliveryOption } from "@/lib/delivery/types";
 import { deliveryPayment, isQuoteAdvised, isQuoteOnly, paymentsEnabled, routeUrl, site } from "@/lib/site";
 
-type Intent = "pay" | "lead";
+// pay — Ozon Pay (карта и СБП), yandex — Яндекс Пэй, split — Яндекс Сплит, lead — заявка менеджеру
+type Intent = "pay" | "yandex" | "split" | "lead";
 type Status = { state: "idle" } | { state: "sending"; intent: Intent } | { state: "error"; message: string };
 type Field = "name" | "phone" | "email" | "telegram" | "service" | "city" | "point" | "address" | "consent" | "offer";
 type Errors = Partial<Record<Field, string>>;
@@ -52,6 +53,18 @@ export function CartClient() {
   const [contact, setContact] = useState("phone");
   const [delivery, setDelivery] = useState<"pickup" | "carrier">("pickup");
   const [option, setOption] = useState<DeliveryOption | null>(null);
+  // дополнительные способы оплаты, подключённые на сервере (ключи Яндекс Пэй в .env)
+  const [extra, setExtra] = useState({ yandex: false, split: false });
+  useEffect(() => {
+    let live = true;
+    fetch("/api/payments/methods")
+      .then((r) => r.json())
+      .then((d) => live && setExtra({ yandex: Boolean(d.yandex), split: Boolean(d.split) }))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const goods = cartTotal(items);
   // доставку добавляем к оплате, только если она оплачивается вместе с заказом и цена не предварительная
   const shipping = delivery === "carrier" && deliveryPayment === "with_order" && option?.cost && !option.preliminary ? option.cost : 0;
@@ -66,13 +79,14 @@ export function CartClient() {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Какой кнопкой отправили: «Оформить и оплатить» или «Оставить заявку»
+    // Какой кнопкой отправили: «Оформить и оплатить», «Яндекс Пэй», «Сплит» или «Оставить заявку»
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const intent: Intent = submitter?.value === "lead" ? "lead" : "pay";
+    const intent: Intent = submitter?.value === "lead" ? "lead" : submitter?.value === "yandex" ? "yandex" : submitter?.value === "split" ? "split" : "pay";
     const fd = new FormData(e.currentTarget);
     const get = (k: string) => String(fd.get(k) ?? "").trim();
     const form = {
-      intent,
+      intent: intent === "lead" ? "lead" : "pay",
+      method: intent === "yandex" || intent === "split" ? intent : "ozon",
       name: get("name"),
       phone,
       email: get("email"),
@@ -96,7 +110,7 @@ export function CartClient() {
       website: get("website"), // ловушка для ботов
     };
 
-    const pay = intent === "pay";
+    const pay = intent !== "lead";
     const errs: Errors = {};
     if (pay ? !/\S{2,}\s+\S{2,}/.test(form.name) : form.name.length < 2) errs.name = pay ? "Укажите фамилию и имя получателя." : "Укажите имя.";
     if (phone.replace(/\D/g, "").length !== 11) errs.phone = "Введите телефон полностью: +7 (900) 000-00-00.";
@@ -443,6 +457,37 @@ export function CartClient() {
               <Link href="/returns" className="underline underline-offset-2">Возврат и обмен</Link>
             </p>
             <PaymentBadges compact className="text-ink-soft" />
+
+            {(extra.yandex || extra.split) && (
+              <div className="flex flex-col gap-2">
+                <p className="text-center text-sm text-ink-soft">Или оплатите через Яндекс</p>
+                <div className={extra.yandex && extra.split ? "grid gap-2 sm:grid-cols-2" : "grid gap-2"}>
+                  {extra.yandex && (
+                    <button type="submit" name="intent" value="yandex" disabled={sending} className="btn btn-ghost min-h-12 w-full text-base font-semibold disabled:opacity-60">
+                      {sending && status.intent === "yandex" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Wallet className="size-5" aria-hidden />}
+                      Яндекс Пэй
+                    </button>
+                  )}
+                  {extra.split && (
+                    <button type="submit" name="intent" value="split" disabled={sending} className="btn btn-ghost min-h-12 w-full text-base font-semibold disabled:opacity-60">
+                      {sending && status.intent === "split" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CalendarClock className="size-5" aria-hidden />}
+                      Сплит: частями
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-ink-soft">
+                  {extra.yandex && "Яндекс Пэй: оплата картой, баллы Плюса. "}
+                  {extra.split && (
+                    <>
+                      Сплит — оплата частями от Яндекса, условия и график платежей покажет Яндекс перед оплатой.{" "}
+                      <a href="https://split.yandex.ru/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                        О сервисе Сплит
+                      </a>
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
 
             <div className="seam text-line" />
             <div className="flex flex-col gap-2 text-center">

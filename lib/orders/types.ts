@@ -61,7 +61,9 @@ export type OrderDelivery =
     };
 
 export type PaymentState = {
-  provider: "ozonpay";
+  provider: "ozonpay" | "yandexpay";
+  /** через что платил покупатель у Яндекса: карта (Яндекс Пэй) или Сплит */
+  method?: "pay" | "split";
   /** id платежа у провайдера */
   id?: string;
   status: "none" | "pending" | "paid" | "failed" | "refunded";

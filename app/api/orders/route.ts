@@ -7,6 +7,7 @@ import { notifyManager, telegramReady } from "@/lib/notify/telegram";
 import { bitrixReady, createBitrixDeal } from "@/lib/notify/bitrix";
 import { adminEnabled } from "@/lib/admin-auth";
 import { buildPaymentRequest, createPayment } from "@/lib/payments/ozonpay";
+import { createYandexPayment, yandexPayConfigured, yandexSplitEnabled } from "@/lib/payments/yandexpay";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { paymentsEnabled } from "@/lib/site";
 
@@ -58,14 +59,19 @@ export async function POST(req: Request) {
     order = { ...draft, id: "T" + Date.now().toString(36).slice(-5).toUpperCase() };
   }
 
+  // способ онлайн-оплаты: Ozon Pay (по умолчанию), Яндекс Пэй или Яндекс Сплит — если они подключены ключами в .env
+  const method = body.method === "yandex" || body.method === "split" ? body.method : "ozon";
+  const payOnline = method === "ozon" ? paymentsEnabled : method === "split" ? yandexSplitEnabled() : yandexPayConfigured();
+  const paymentLabel = method === "split" ? "Яндекс Сплит" : method === "yandex" ? "Яндекс Пэй" : "Ozon Pay";
+
   let paymentUrl: string | undefined;
   let paymentError: string | undefined;
-  if (order.kind === "order" && paymentsEnabled && saved) {
+  if (order.kind === "order" && payOnline && saved) {
     try {
-      const { paymentId, url } = await createPayment(buildPaymentRequest(order));
+      const { paymentId, url } = method === "ozon" ? await createPayment(buildPaymentRequest(order)) : await createYandexPayment(order, method);
       paymentUrl = url;
       await updateOrder(order.id, (o) => {
-        o.payment = { ...o.payment, id: paymentId, url, status: "pending" };
+        o.payment = { ...o.payment, provider: method === "ozon" ? "ozonpay" : "yandexpay", method: method === "split" ? "split" : "pay", id: paymentId, url, status: "pending" };
       });
     } catch (e) {
       console.error("[orders] платёж не создался", e);
@@ -77,7 +83,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const text = newOrderText(order, { saved, paymentUrl, paymentError });
+  const text = newOrderText(order, { saved, paymentUrl, paymentError, paymentLabel });
   // Telegram пишет в консоль в разработке и молчит в продакшене без настроек — зовём его, только если Битрикс не настроен или Telegram задан
   const [crm, toTelegram] = await Promise.all([
     createBitrixDeal(order, text),

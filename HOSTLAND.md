@@ -81,3 +81,19 @@ Settings → Secrets and variables → Actions:
 `api.telegram.org` с серверов Hostland не открывается (таймаут, видно по кнопке «Проверить Telegram» в `/admin`). Сообщения менеджерам
 идут через бесплатный Cloudflare Worker: код в `hostland/telegram-relay-worker.js`, инструкция в его шапке. Адрес воркера записывается
 в `.env` как `TELEGRAM_API_URL`; без него сайт ходит в Telegram напрямую. Воркер пересылает только `sendMessage`, токена бота в нём нет.
+
+## 6. Яндекс Пэй и Сплит
+
+Интеграция по Merchant API без SDK (`lib/payments/yandexpay.ts`): заказ создаётся запросом `/v1/orders`, покупатель уходит на `paymentUrl`,
+статус приходит уведомлением на `/api/payments/yandexpay/v1/webhook` (JWT ES256, ключи с `/api/jwks`). После оплаты те же действия, что у Ozon Pay
+(`lib/orders/paid.ts`): сообщение менеджеру, комментарий в Битрикс24, автоотправление СДЭК.
+
+В `.env` на сервере: `YANDEXPAY_API_KEY` (ключ Merchant API; в тестовой среде равен Merchant ID) и на время теста `YANDEXPAY_SANDBOX=true`.
+В кабинете (console.pay.yandex.ru → Настройки, переключатель «Тестовые данные») в «Callback URL» впишите `https://xn----jtbybvccot.xn--p1ai/api/payments/yandexpay`
+без `/v1/webhook`. Кнопки в корзине появляются сами, когда ключ задан. Боевой режим: убрать `YANDEXPAY_SANDBOX`, подставить боевой ключ,
+вписать боевой Callback URL.
+
+Чеки: Яндекс не пробивает их сам (п. 4.8 условий сервиса). Позиции передаются со ставкой НДС `YANDEXPAY_TAX` (по умолчанию 6, без НДС) и
+почтой покупателя; чек формирует облачная касса (АТОЛ Онлайн или CloudKassir подключаются в кабинете Яндекс Пэй).
+Возвраты пока вручную в кабинете: Платежи.
+
