@@ -13,6 +13,7 @@ import { PaymentBadges } from "@/components/PaymentBadges";
 import { cartTotal, cartWeight, useCart, useHydrated } from "@/lib/cart";
 import { formatArea, formatPrice, formatSize, formatWeight } from "@/lib/format";
 import { goals, reachGoal } from "@/lib/metrika";
+import { currentVisit } from "@/lib/visit";
 import type { DeliveryOption } from "@/lib/delivery/types";
 import { deliveryPayment, isQuoteAdvised, isQuoteOnly, paymentsEnabled, routeUrl, site } from "@/lib/site";
 
@@ -137,6 +138,7 @@ export function CartClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          visit: currentVisit(),
           items: items.map(({ slug, option, color, size, qty, custom }) => ({ slug, option, color, size, qty, custom })),
         }),
       });

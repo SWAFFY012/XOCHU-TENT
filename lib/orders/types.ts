@@ -76,6 +76,24 @@ export type PaymentState = {
   events: string[];
 };
 
+/** Откуда пришёл покупатель и как вёл себя в визите (по меткам объявления и данным браузера). */
+export type OrderSource = {
+  utmSource?: string;
+  utmMedium?: string;
+  /** номер кампании Директа (utm_campaign) */
+  campaign?: string;
+  /** номер объявления (utm_content) */
+  ad?: string;
+  /** ключевая фраза (utm_term) */
+  term?: string;
+  yclid?: boolean;
+  referrer?: string;
+  landing?: string;
+  /** сколько секунд длился визит до отправки заказа */
+  seconds?: number;
+  pages?: number;
+};
+
 export type Order = {
   /** номер для покупателя, например «1024» */
   id: string;
@@ -102,6 +120,8 @@ export type Order = {
   payment: PaymentState;
   /** сделка в Битрикс24, созданная по заказу */
   crm?: { bitrixDealId?: number; bitrixError?: string };
+  /** источник трафика и визит; у старых заказов нет */
+  source?: OrderSource;
   /** согласие с офертой и обработкой ПД — когда и с какого IP */
   consent: { offer: boolean; personalData: boolean; at: string; ip: string };
   history: { at: string; status: OrderStatus; note?: string }[];

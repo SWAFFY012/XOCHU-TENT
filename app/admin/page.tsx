@@ -6,6 +6,7 @@ import { deliveryProviders } from "@/lib/delivery";
 import { formatPrice, formatSize, formatWeight, plural } from "@/lib/format";
 import { deliveryLine, serviceTitle } from "@/lib/orders/messages";
 import { listOrders } from "@/lib/orders/store";
+import { sourcePlain } from "@/lib/orders/source";
 import { ORDER_STATUSES, STATUS_LABEL, type Order } from "@/lib/orders/types";
 import { logout, setStatus } from "./actions";
 import { LoginForm } from "./LoginForm";
@@ -109,6 +110,7 @@ function OrderCard({ o }: { o: Order }) {
           Вес ≈ {formatWeight(o.weight)} · {places} {plural(places, "место", "места", "мест")} · упаковка{" "}
           {[...new Set(o.items.map((i) => i.box).filter(Boolean))].join(", ") || "—"} см
         </p>
+        <p className="text-xs text-ink-soft">Источник: {sourcePlain(o)}</p>
         {o.comment && <p className="text-sm">«{o.comment}»</p>}
         <details className="text-sm">
           <summary className="cursor-pointer font-semibold">
