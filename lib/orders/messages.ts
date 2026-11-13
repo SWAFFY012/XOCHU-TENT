@@ -2,6 +2,7 @@ import "server-only";
 import { formatPrice, formatSize, formatWeight } from "@/lib/format";
 import { esc } from "@/lib/notify/telegram";
 import { deliveryPayment, deliveryServices, isQuoteAdvised, site } from "@/lib/site";
+import { sourceShort, sourceText } from "./source";
 import { STATUS_LABEL, type Order } from "./types";
 
 const CONTACT = { phone: "звонок", telegram: "Telegram", whatsapp: "WhatsApp" } as const;
@@ -52,6 +53,9 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
     `Товары: <b>${formatPrice(o.itemsTotal)}</b>`,
     o.total !== o.itemsTotal ? `К оплате с доставкой: <b>${formatPrice(o.total)}</b>` : null,
     o.weight ? `⚖️ Вес заказа ≈ ${formatWeight(o.weight)}` : null,
+    "",
+    sourceText(o),
+    "",
     o.kind === "order"
       ? opts.paymentUrl
         ? `💳 Покупатель ушёл на оплату ${opts.paymentLabel ?? "Ozon Pay"} — придёт уведомление об оплате.`
@@ -77,7 +81,7 @@ export function newOrderText(o: Order, opts: { saved: boolean; paymentUrl?: stri
 const providerLabel = (o: Order) => (o.payment.provider === "yandexpay" ? (o.payment.method === "split" ? " (Яндекс Сплит)" : " (Яндекс Пэй)") : "");
 
 export const paidText = (o: Order) =>
-  `✅ <b>Заказ №${o.id} оплачен${providerLabel(o)}</b>: ${formatPrice(o.total)}\n${esc(o.customer.name)}, ${esc(o.customer.phone)}\n${esc(deliveryLine(o))}${hasAdvised(o) ? `\n${WINDOWS_NOTE}` : ""}${isOzon(o) ? `\n${OZON_NOTE}` : ""}`;
+  `✅ <b>Заказ №${o.id} оплачен${providerLabel(o)}</b>: ${formatPrice(o.total)}\n${esc(o.customer.name)}, ${esc(o.customer.phone)}\n${esc(deliveryLine(o))}${hasAdvised(o) ? `\n${WINDOWS_NOTE}` : ""}${isOzon(o) ? `\n${OZON_NOTE}` : ""}${sourceShort(o) ? `\n${sourceShort(o)}` : ""}`;
 
 export const statusText = (o: Order, note?: string) =>
   `🔄 Заказ №${o.id}: <b>${STATUS_LABEL[o.status]}</b>${note ? `\n${esc(note)}` : ""}`;

@@ -3,6 +3,7 @@ import { findVariant, getProduct, getSummary } from "@/lib/catalog";
 import { quoteDelivery, toParcels } from "@/lib/delivery";
 import { estimateWeight, priceCustom } from "@/lib/format";
 import { deliveryPayment, deliveryServices, isQuoteOnly, sizePricePerM2 } from "@/lib/site";
+import { cleanVisit } from "./source";
 import type { ContactMethod, Order, OrderDelivery, OrderItem } from "./types";
 
 /** Что присылает корзина. Цены и веса не принимаем — считаем по прайсу. */
@@ -28,6 +29,8 @@ export type CheckoutBody = {
   offer?: boolean;
   website?: string;
   items?: CartLine[];
+  /** источник и визит из браузера: проверяем и обрезаем, на цену не влияет */
+  visit?: unknown;
 };
 
 export type CartLine = { slug: string; option: string; color: string; size: string; qty: number; custom: boolean };
@@ -94,6 +97,7 @@ export async function buildOrder(body: CheckoutBody, ip: string): Promise<Omit<O
     delivery,
     total: itemsTotal + deliveryInTotal,
     payment: { provider: "ozonpay", status: "none", events: [] },
+    source: cleanVisit(body.visit),
     consent: { offer: Boolean(body.offer), personalData: true, at: now, ip },
     history: [{ at: now, status: "new" }],
   };
