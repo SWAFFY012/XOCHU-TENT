@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { Send, X } from "lucide-react";
 import { clsx } from "clsx";
@@ -71,6 +72,8 @@ function Mark({ className, open = false }: { className: string; open?: boolean }
 export function ChatWidget() {
   const [enabled, setEnabled] = useState(false);
   const [open, setOpen] = useState(false);
+  // Страница товара на телефоне: только значок, над нижней панелью «В корзину» (body[data-buybar])
+  const productPage = usePathname().startsWith("/catalog/");
   const [hint, setHint] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
@@ -242,7 +245,14 @@ export function ChatWidget() {
         )}
       </AnimatePresence>
 
-      <div className="fixed right-4 bottom-4 z-[35] sm:right-6 sm:bottom-6">
+      <div
+        className={clsx(
+          "fixed right-4 bottom-4 z-[35] sm:right-6 sm:bottom-6",
+          productPage &&
+            !open &&
+            "transition-[bottom,opacity] duration-300 max-md:in-data-buybar:bottom-[calc(5.5rem+env(safe-area-inset-bottom))] max-md:in-data-buyzone:pointer-events-none max-md:in-data-buyzone:opacity-0",
+        )}
+      >
         <AnimatePresence>
           {hint && !open && (
             <motion.div
@@ -273,13 +283,19 @@ export function ChatWidget() {
           aria-label={open ? "Закрыть чат с ИИ-ассистентом" : "Открыть чат с ИИ-ассистентом"}
           className={clsx(
             "group relative flex items-center gap-3 rounded-full bg-tarp text-paper shadow-[0_16px_36px_-12px_rgb(22_27_21/0.7)] transition-[padding,transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 active:scale-95",
-            open ? "p-1.5" : "py-1.5 pr-6 pl-1.5 max-sm:pr-5",
+            open ? "p-1.5" : productPage ? "p-1 md:py-1.5 md:pr-6 md:pl-1.5" : "py-1.5 pr-6 pl-1.5 max-sm:pr-5",
           )}
         >
           {/* шов по краю, как подгиб на тенте */}
           <span aria-hidden className="pointer-events-none absolute inset-[3px] rounded-full border border-dashed border-paper/25" />
-          <Mark className={open ? "size-12" : "size-[52px] sm:size-[58px]"} open={open} />
-          <span className={clsx("grid overflow-hidden text-left leading-tight transition-[max-width,opacity] duration-300", open ? "max-w-0 opacity-0" : "max-w-60 opacity-100")}>
+          <Mark className={open ? "size-12" : productPage ? "size-[46px] md:size-[58px]" : "size-[52px] sm:size-[58px]"} open={open} />
+          <span
+            className={clsx(
+              "grid overflow-hidden text-left leading-tight transition-[max-width,opacity] duration-300",
+              open ? "max-w-0 opacity-0" : "max-w-60 opacity-100",
+              productPage && "max-md:hidden",
+            )}
+          >
             <span className="text-[1.08rem] font-semibold whitespace-nowrap">ИИ-ассистент</span>
             <span className="text-[0.8rem] whitespace-nowrap text-paper/70 max-sm:hidden">Подскажет по товарам и цене</span>
           </span>

@@ -5,7 +5,7 @@
   overflow: hidden;
   background: var(--color-ink);
   /* Also release the page if JavaScript never hydrates. */
-  animation: rapid-intro-release 0s 8s forwards;
+  animation: rapid-intro-release 0s 5s forwards;
 }
 
 .rapid-intro__backdrop,

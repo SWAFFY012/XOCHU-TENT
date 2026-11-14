@@ -8,6 +8,7 @@ import { Header } from "@/components/layout/Header";
 import { ChatWidget } from "@/components/assistant/ChatWidget";
 import { Footer } from "@/components/layout/Footer";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
+import { HIDE_INTRO_FOR_ADS } from "@/lib/intro";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -92,6 +93,8 @@ export default function RootLayout({ children, modal }: LayoutProps<"/">) {
   return (
     <html lang="ru" className={`${alumni.variable} ${golos.variable} ${tektur.variable} ${manrope.variable} ${jost.variable} ${unbounded.variable} antialiased`}>
       <body className="flex min-h-dvh flex-col">
+        {/* до гидрации: с рекламы — без заставки на главной */}
+        <script dangerouslySetInnerHTML={{ __html: HIDE_INTRO_FOR_ADS }} />
         <a href="#main" className="sr-only z-[70] rounded-full bg-strap px-4 py-2 focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
           К содержимому
         </a>

@@ -78,7 +78,7 @@ async function ProductContent({ params }: Pick<PageProps<"/catalog/[slug]">, "pa
 
   return (
     <div className="wrap pt-24 pb-20 md:pt-28">
-      <nav aria-label="Хлебные крошки" className="mb-6 flex flex-wrap items-center gap-1 text-sm text-ink-soft">
+      <nav aria-label="Хлебные крошки" className="mb-3 md:mb-6 flex flex-wrap items-center gap-1 text-sm text-ink-soft">
         <Link href="/" className="hover:text-ink">Главная</Link>
         <ChevronRight className="size-3.5" aria-hidden />
         <Link href="/catalog" className="hover:text-ink">Каталог</Link>
@@ -90,12 +90,8 @@ async function ProductContent({ params }: Pick<PageProps<"/catalog/[slug]">, "pa
         p={p}
         data={data}
         media={toClientMedia(getMedia(slug), data.sizes)}
-        heading={
-          <div>
-            <h1 className="text-[3.2rem] md:text-7xl">{p.title}</h1>
-            <p className="mt-3 max-w-[48ch] text-lg text-ink-soft">{p.short}</p>
-          </div>
-        }
+        heading={<h1 className="text-[3.2rem] md:text-7xl">{p.title}</h1>}
+        intro={<p className="-mt-4 max-w-[48ch] text-lg text-ink-soft max-md:mt-0">{p.short}</p>}
         details={<ProductDetails p={p} />}
       />
 

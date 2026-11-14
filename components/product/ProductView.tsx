@@ -2,10 +2,13 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { Ruler } from "lucide-react";
 import { clsx } from "clsx";
 import { ProductArt } from "@/components/ProductArt";
-import { Configurator, type Selection } from "./Configurator";
+import { PriceTicker } from "@/components/motion/PriceTicker";
+import { Configurator, type BuyState, type Selection } from "./Configurator";
+import { StickyBuyBar } from "./StickyBuyBar";
 import { formatPrice } from "@/lib/format";
 import type { ClientMedia, CompactVariants, ProductSummary } from "@/lib/types";
 
@@ -16,13 +19,23 @@ type Props = {
   /** В выезжающей панели — одна колонка */
   compact?: boolean;
   heading: React.ReactNode;
+  /** Короткое описание под ценой (на странице товара) */
+  intro?: React.ReactNode;
   details: React.ReactNode;
 };
 
-export function ProductView({ p, data, media, compact, heading, details }: Props) {
+export function ProductView({ p, data, media, compact, heading, intro, details }: Props) {
   const [color, setColor] = useState(0);
   const [sel, setSel] = useState<Selection | null>(null);
   const onSelect = useCallback((s: Selection) => setSel(s), []);
+
+  // Цена под названием и нижняя панель берут итог и функцию добавления у конфигуратора
+  const [buy, setBuy] = useState<BuyState | null>(null);
+  const onBuyState = useCallback((s: BuyState) => setBuy(s), []);
+  const buyRef = useRef<HTMLButtonElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const actionRef = useRef<(() => void) | null>(null);
+  const addFromBar = useCallback(() => actionRef.current?.(), []);
 
   // Фото под выбор: карточка размера -> обложка пропитки/цвета -> первая обложка
   const option = sel?.option ?? p.options[0];
@@ -54,6 +67,8 @@ export function ProductView({ p, data, media, compact, heading, details }: Props
             "relative overflow-hidden rounded-[26px]",
             shown ? "bg-white" : "bg-[#e1e6dd]",
             compact ? "aspect-[4/3]" : shown ? "aspect-[3/4]" : "aspect-[4/5] sm:aspect-square",
+            // На телефоне фото не выше половины экрана: название и цена остаются на первом экране
+            !compact && "max-md:aspect-auto max-md:h-[min(46svh,125vw)]",
           )}
         >
           <AnimatePresence mode="popLayout" initial={false}>
@@ -121,7 +136,7 @@ export function ProductView({ p, data, media, compact, heading, details }: Props
                 aria-label={i === 0 ? "Фото выбранного размера" : `Фото ${i + 1}`}
                 onClick={() => setThumb(i)}
                 className={clsx(
-                  "relative aspect-[3/4] w-16 shrink-0 overflow-hidden rounded-xl bg-white ring-2 transition md:w-[4.5rem]",
+                  "relative aspect-[3/4] w-12 shrink-0 sm:w-16 overflow-hidden rounded-xl bg-white ring-2 transition md:w-[4.5rem]",
                   i === thumb ? "ring-ink" : "ring-transparent opacity-75 hover:opacity-100",
                 )}
               >
@@ -132,11 +147,40 @@ export function ProductView({ p, data, media, compact, heading, details }: Props
         )}
       </div>
 
-      <div className="flex flex-col gap-7">
+      <div className={compact ? "flex flex-col gap-7" : "flex flex-col gap-7 max-md:gap-6"}>
         {heading}
-        <Configurator p={p} data={data} color={color} onColor={setColor} onSelect={onSelect} image={main} />
+        {!compact && (
+          <div ref={summaryRef} className="-mt-3 flex items-center justify-between gap-3 md:hidden">
+            <div className="min-w-0">
+              {buy ? (
+                <PriceTicker value={buy.total} className="block font-display text-[2.4rem] leading-none font-extrabold" />
+              ) : (
+                <span className="block font-display text-[2.4rem] leading-none font-extrabold">от {formatPrice(p.priceFrom)}</span>
+              )}
+              <span className="mt-1 block truncate text-sm text-ink-soft">
+                {buy ? `${buy.label}${buy.label.endsWith("м") ? `, ${p.colors[color].toLowerCase()}` : ""}` : "цена за стандартный размер"}
+              </span>
+            </div>
+            <a href="#sizes" className="btn btn-ghost shrink-0 px-4 text-[0.95rem]">
+              <Ruler className="size-4" aria-hidden /> Выбрать размер
+            </a>
+          </div>
+        )}
+        {intro}
+        <Configurator
+          p={p}
+          data={data}
+          color={color}
+          onColor={setColor}
+          onSelect={onSelect}
+          image={main}
+          onBuyState={compact ? undefined : onBuyState}
+          buyRef={compact ? undefined : buyRef}
+          actionRef={compact ? undefined : actionRef}
+        />
         {details}
       </div>
+      {!compact && <StickyBuyBar buy={buy} onAdd={addFromBar} summaryRef={summaryRef} buyRef={buyRef} />}
     </div>
   );
 }

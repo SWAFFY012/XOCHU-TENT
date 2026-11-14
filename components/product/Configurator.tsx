@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type RefObject } from "react";
 import { Check, Minus, Package, Plus, Ruler, ShoppingBag } from "lucide-react";
 import { clsx } from "clsx";
 import { PriceTicker } from "@/components/motion/PriceTicker";
@@ -15,6 +15,17 @@ import type { CompactVariants, ProductSummary } from "@/lib/types";
 
 export type Selection = { option: string; size: string; custom: boolean };
 
+/** Что видно в основном блоке «итог»: дублируется в цене под названием и в нижней панели на телефоне */
+export type BuyState = {
+  total: number;
+  /** «3 × 4 м» или «Введите размер» */
+  label: string;
+  disabled: boolean;
+  added: boolean;
+  /** изделие по заявке: «Добавить в заявку» вместо «В корзину» */
+  quote: boolean;
+};
+
 type Props = {
   p: ProductSummary;
   data: CompactVariants;
@@ -24,11 +35,17 @@ type Props = {
   onSelect?: (s: Selection) => void;
   /** Текущее фото — сохраняется в корзине */
   image?: string;
+  /** Состояние итога для цены под названием и нижней панели */
+  onBuyState?: (s: BuyState) => void;
+  /** Основная кнопка «В корзину»: за ней следит нижняя панель */
+  buyRef?: RefObject<HTMLButtonElement | null>;
+  /** Сюда кладётся та же функция добавления, что у основной кнопки */
+  actionRef?: RefObject<(() => void) | null>;
 };
 
 const fmt = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
 
-export function Configurator({ p, data, color, onColor, onSelect, image }: Props) {
+export function Configurator({ p, data, color, onColor, onSelect, image, onBuyState, buyRef, actionRef }: Props) {
   const add = useCart((s) => s.add);
   const [firstLabel, secondLabel] = sizeLabels[p.slug] ?? ["Ширина", "Длина"];
   const [option, setOption] = useState(0);
@@ -128,6 +145,20 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
     setTimeout(() => setAdded(false), 2600);
   };
 
+  // Нижняя панель вызывает ту же функцию и показывает ту же цену, что и основной блок
+  useEffect(() => {
+    if (actionRef) actionRef.current = handleAdd;
+  });
+  const sizeLabel = custom
+    ? customValid
+      ? `${fmt(w)} × ${fmt(l)} м`
+      : "Введите размер"
+    : `${fmt(curW)} × ${fmt(curL)} м`;
+  const disabled = custom && !customValid;
+  useEffect(() => {
+    onBuyState?.({ total, label: sizeLabel, disabled, added, quote: productQuote });
+  }, [onBuyState, total, sizeLabel, disabled, added, productQuote]);
+
   return (
     <div className="flex flex-col gap-6">
       {p.optionLabel && p.options.length > 1 && (
@@ -168,8 +199,8 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
         </div>
       </Group>
 
-      {/* стандартный / свой размер */}
-      <div className="grid grid-cols-2 rounded-full bg-ink/6 p-1 text-[0.95rem] font-semibold">
+      {/* стандартный / свой размер; якорь для кнопки «Выбрать размер» */}
+      <div id="sizes" className="grid scroll-mt-24 grid-cols-2 rounded-full bg-ink/6 p-1 text-[0.95rem] font-semibold">
         {[false, true].map((v) => (
           <button
             key={String(v)}
@@ -303,6 +334,7 @@ export function Configurator({ p, data, color, onColor, onSelect, image }: Props
         )}
 
         <button
+          ref={buyRef}
           type="button"
           onClick={handleAdd}
           disabled={custom && !customValid}

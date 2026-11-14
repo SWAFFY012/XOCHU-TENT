@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AD_PARAMS } from "@/lib/intro";
 import "./RapidLayersIntro.css";
 
 // Adapted from Codrops RapidLayersAnimation (MIT):
@@ -8,8 +9,11 @@ import "./RapidLayersIntro.css";
 // The outer panel and its image move in opposite directions to reveal a stationary photo.
 // Full license: public/licenses/codrops-rapid-layers.txt.
 const FRAMES = ["tarp", "01-material", "welding", "02-cut", "03-weld", "curtains", "04-sew", "sewing", "05-grommets", "06-ready", "video-start"];
-const DURATION = 1050;
-const STAGGER = 160;
+// Около 2 с вместо 3,5 с: 10 × 85 + 650 мс на слайды, 200 мс на кадр видео, 300 мс на переход
+const DURATION = 650;
+const STAGGER = 85;
+const HOLD = 200;
+const HANDOFF = 300;
 let hasPlayed = false;
 
 export function RapidLayersIntro({ onReveal, onComplete }: { onReveal: () => void; onComplete: () => void }) {
@@ -51,12 +55,25 @@ export function RapidLayersIntro({ onReveal, onComplete }: { onReveal: () => voi
       setDone(true);
     };
 
-    // Never hold someone at the top when they followed a deep link or returned to the page.
-    const skip = hasPlayed || preference.matches || !!window.location.hash || window.scrollY > 40;
-    const watchdog = setTimeout(finish, 7000);
+    // Never hold someone at the top when they followed a deep link, an ad or returned to the page.
+    const skip = hasPlayed || preference.matches || !!window.location.hash || window.scrollY > 40 || AD_PARAMS.test(window.location.search);
+    const watchdog = setTimeout(finish, 4000);
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" || event.key === "Tab") finish();
+      if (event.key === "Escape" || event.key === "Tab" || event.key.startsWith("Arrow") || event.key.startsWith("Page") || event.key === " ") skipNow();
     };
+    // Попытка прокрутить колесом или пальцем — заставка гаснет за 200 мс и отпускает страницу
+    let skipping = false;
+    function skipNow() {
+      if (finished || cancelled || skipping) return;
+      skipping = true;
+      unlock();
+      reveal();
+      const fade = overlay!.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "forwards", easing: "ease-out" });
+      animations.push(fade);
+      fade.finished.catch(() => undefined).then(finish);
+    }
+    window.addEventListener("wheel", skipNow, { passive: true });
+    window.addEventListener("touchmove", skipNow, { passive: true });
     const onPreference = () => {
       if (preference.matches) finish();
     };
@@ -126,14 +143,14 @@ export function RapidLayersIntro({ onReveal, onComplete }: { onReveal: () => voi
       if (cancelled || finished) return;
 
       // The sole intentional hold belongs to the actual first frame of the video.
-      await new Promise<void>((resolve) => { decodeTimeout = setTimeout(resolve, 450); });
-      if (cancelled || finished) return;
+      await new Promise<void>((resolve) => { decodeTimeout = setTimeout(resolve, HOLD); });
+      if (cancelled || finished || skipping) return;
       available.slice(0, -1).forEach((panel) => { panel.style.visibility = "hidden"; });
       overlay.classList.add("rapid-intro--revealing");
       reveal();
       const last = available[available.length - 1];
       // Matching still -> paused video frame; the video starts only after the fade.
-      const handoff = last.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards", easing: "ease-out" });
+      const handoff = last.animate([{ opacity: 1 }, { opacity: 0 }], { duration: HANDOFF, fill: "forwards", easing: "ease-out" });
       animations.push(handoff);
       await handoff.finished.catch(() => undefined);
       finish();
@@ -149,6 +166,8 @@ export function RapidLayersIntro({ onReveal, onComplete }: { onReveal: () => voi
       animations.forEach((animation) => animation.cancel());
       unlock();
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("wheel", skipNow);
+      window.removeEventListener("touchmove", skipNow);
       preference.removeEventListener("change", onPreference);
     };
   }, [onReveal, onComplete, done]);
