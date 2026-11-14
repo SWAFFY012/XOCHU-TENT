@@ -24,7 +24,7 @@ export function ProductCard({ p, priority }: { p: ProductSummary; priority?: boo
   const href = `/catalog/${p.slug}`;
 
   return (
-    <article className="group relative flex flex-col">
+    <article className="group relative flex h-full flex-col">
       <Link
         href={href}
         scroll={false}
