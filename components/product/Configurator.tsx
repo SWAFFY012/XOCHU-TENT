@@ -9,6 +9,7 @@ import { PriceTicker } from "@/components/motion/PriceTicker";
 import { useCart } from "@/lib/cart";
 import { hexOf } from "@/lib/colors";
 import { priceCustom, estimateWeight, formatArea, formatPrice, formatWeight, parseSize } from "@/lib/format";
+import { fabricCuts, validCustomSize } from "@/lib/fabric-cut";
 import { sizeLabels } from "@/lib/content";
 import { isQuoteAdvised, isQuoteOnly, sizePricePerM2 } from "@/lib/site";
 import type { CompactVariants, ProductSummary } from "@/lib/types";
@@ -57,6 +58,7 @@ export function Configurator({ p, data, color, onColor, onSelect, image, onBuySt
 
   // Ткани на отрез: вторая величина (ширина рулона) у всех размеров одна
   const dims = useMemo(() => data.sizes.map(parseSize), [data.sizes]);
+  const cut = fabricCuts[p.slug];
   const rollWidth = useMemo(() => {
     const s = new Set(dims.map((d) => d[1]));
     return p.category === "fabric" && s.size === 1 ? [...s][0] : null;
@@ -102,8 +104,8 @@ export function Configurator({ p, data, color, onColor, onSelect, image, onBuySt
   }, [onSelect, p.options, option, data.sizes, current, custom]);
 
   const w = Number(cw.replace(",", "."));
-  const l = Number(cl.replace(",", "."));
-  const customValid = w >= 0.5 && l >= 0.5 && w <= 30 && l <= 50;
+  const l = cut?.width ?? Number(cl.replace(",", "."));
+  const customValid = validCustomSize(p.slug, w, l);
   const customArea = customValid ? Math.round(w * l * 100) / 100 : 0;
   const perM2 = sizePricePerM2(p.slug, p.pricePerM2ByOption[p.options[option]] ?? p.pricePerM2Median, customArea, true);
   const customPrice = customValid ? priceCustom(customArea, perM2) : 0;
@@ -271,15 +273,20 @@ export function Configurator({ p, data, color, onColor, onSelect, image, onBuySt
           >
             <div className="grid grid-cols-2 gap-3">
               <NumField label={rollWidth ? "Длина, м" : `${firstLabel}, м`} value={cw} onChange={setCw} />
-              <NumField label={rollWidth ? "Ширина, м" : `${secondLabel}, м`} value={cl} onChange={setCl} />
+              {cut ? (
+                <div className="flex flex-col gap-1.5 text-sm font-semibold">
+                  Ширина рулона, м
+                  <div className="field font-display text-2xl font-bold" aria-label="Фиксированная ширина">{fmt(cut.width)} (фикс.)</div>
+                </div>
+              ) : <NumField label={rollWidth ? "Ширина, м" : `${secondLabel}, м`} value={cl} onChange={setCl} />}
             </div>
             <p className="mt-3 text-sm text-ink-soft">
               {quoteOnly ? "Предварительно" : "Итоговая цена"}: {formatPrice(perM2)} за м²
-              {p.options.length > 1 ? ` для пропитки «${p.options[option]}»` : ""}. От 0,5 до 30 × 50 м.
+              {p.options.length > 1 ? ` для пропитки «${p.options[option]}»` : ""}. {cut ? `Длина отреза от 1 до ${cut.maxLength} м. Ширина фиксированная: ${fmt(cut.width)} м.` : "От 0,5 до 30 × 50 м."}
             </p>
             {(cw || cl) && !customValid && (
               <p className="mt-2 text-sm font-medium text-danger" role="alert">
-                Укажите оба размера от 0,5 м: первый до 30 м, второй до 50 м.
+                {cut ? `Укажите длину отреза от 1 до ${cut.maxLength} м.` : "Укажите оба размера от 0,5 м: первый до 30 м, второй до 50 м."}
               </p>
             )}
           </motion.div>

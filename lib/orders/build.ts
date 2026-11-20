@@ -1,4 +1,5 @@
 import "server-only";
+import { validCustomSize } from "@/lib/fabric-cut";
 import { findVariant, getProduct, getSummary } from "@/lib/catalog";
 import { quoteDelivery, toParcels } from "@/lib/delivery";
 import { estimateWeight, priceCustom } from "@/lib/format";
@@ -160,7 +161,9 @@ export function resolveItems(lines: CartLine[] | undefined): OrderItem[] {
     let box = "";
     if (it.custom) {
       const [w, l] = size.split("х").map(num);
-      if (!(w >= 0.5 && l >= 0.5 && w <= 30 && l <= 50)) throw new CheckoutError("Проверьте нестандартный размер.");
+      if (!/^\d+(?:[.,]\d+)?х\d+(?:[.,]\d+)?$/.test(size) || !validCustomSize(p.slug, w, l)) {
+        throw new CheckoutError("Проверьте нестандартный размер.");
+      }
       const area = Math.round(w * l * 100) / 100;
       price = priceCustom(area, sizePricePerM2(p.slug, p.pricePerM2ByOption[it.option] ?? p.pricePerM2Median, area, true));
       weight = estimateWeight(area, p.kgPerM2);
