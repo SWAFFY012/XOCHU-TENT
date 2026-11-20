@@ -2,6 +2,13 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');const ts
 function load(file,mocks){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports,require:n=>{if(n in mocks)return mocks[n];throw Error(n)},process:{env:{},cwd:()=>"/tmp/mock-delivery"},console,Error,setTimeout,URLSearchParams,Buffer,Date,Map,Set,Promise});return exports;}
 const geo=load('lib/delivery/coverage.ts',{});assert.equal(geo.pointSearchRadius({lat:55.75,lon:37.62}),300);assert.equal(geo.pointSearchRadius({lat:59.94,lon:30.32}),300);assert.equal(geo.pointSearchRadius({lat:55.83,lon:37.39}),300);assert.equal(geo.pointSearchRadius({lat:55.79,lon:49.12}),25);assert(geo.pointDistance({lat:55.75,lon:37.62},{lat:56.75,lon:37.62})>100);
 console.log('Coverage boundaries OK');
+const {matchesPointQuery}=load('lib/delivery/point-search.ts',{});
+const sadovaya={name:'Пункт Ozon',address:'Россия, Московская Область, Красногорск, Путилково, Садовая улица, 19'};
+assert(matchesPointQuery(sadovaya,'Путилково Садовая 19'));
+assert(matchesPointQuery(sadovaya,'19, садовая ПУТИЛКОВО'));
+assert(!matchesPointQuery(sadovaya,'Путилково Садовая 20'));
+console.log('PVZ search ignores commas and word order');
+
 (async()=>{
 const calls=[];const cities={Москва:{code:44,city:'Москва',region_code:81,latitude:55.75,longitude:37.62},Красногорск:{code:520,city:'Красногорск',region_code:9,latitude:55.82,longitude:37.33},'Санкт-Петербург':{code:137,city:'Санкт-Петербург',region_code:82,latitude:59.94,longitude:30.32},Всеволожск:{code:999,city:'Всеволожск',region_code:10,latitude:60.02,longitude:30.65}};
 const office=(id,city_code=520)=>({code:id,name:id,location:{city_code,address:'Садовая, 19',address_full:'Путилково, Садовая, 19',latitude:55.84,longitude:37.4}});

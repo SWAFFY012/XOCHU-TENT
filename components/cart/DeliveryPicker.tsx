@@ -1,5 +1,7 @@
 "use client";
 
+import { matchesPointQuery } from "@/lib/delivery/point-search";
+
 import { useEffect, useMemo, useState } from "react";
 import { Ban, Info, Loader2, MapPin, Search } from "lucide-react";
 import type { DeliveryOption, DeliveryPoint } from "@/lib/delivery/types";
@@ -95,7 +97,7 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const found = q ? points.list.filter((p) => `${p.name} ${p.address}`.toLowerCase().includes(q)) : points.list;
+    const found = q ? points.list.filter((p) => matchesPointQuery(p, q)) : points.list;
     return found.slice(0, 60);
   }, [points.list, query]);
 
