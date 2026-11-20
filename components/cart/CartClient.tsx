@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarClock, CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Send, Trash2, TriangleAlert, Wallet } from "lucide-react";
 import { DeliveryPicker } from "@/components/cart/DeliveryPicker";
 import { ShopMap } from "@/components/ShopMap";
@@ -18,7 +18,7 @@ import type { DeliveryOption } from "@/lib/delivery/types";
 import { deliveryPayment, isQuoteAdvised, isQuoteOnly, paymentsEnabled, routeUrl, site } from "@/lib/site";
 
 // pay — Ozon Pay (карта и СБП), yandex — Яндекс Пэй, split — Яндекс Сплит, lead — заявка менеджеру
-type Intent = "pay" | "yandex" | "split" | "lead";
+type Intent = "choose" | "pay" | "yandex" | "split" | "lead";
 type Status = { state: "idle" } | { state: "sending"; intent: Intent } | { state: "error"; message: string };
 type Field = "name" | "phone" | "email" | "telegram" | "service" | "city" | "point" | "address" | "consent" | "offer";
 type Errors = Partial<Record<Field, string>>;
@@ -78,11 +78,15 @@ export function CartClient() {
   const advised = items.some((i) => isQuoteAdvised(i.slug));
   const advisedCustom = items.some((i) => isQuoteAdvised(i.slug) && i.custom);
 
+  const [choosingPayment, setChoosingPayment] = useState(false);
+  const submitting = useRef(false);
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Какой кнопкой отправили: «Оформить и оплатить», «Яндекс Пэй», «Сплит» или «Оставить заявку»
+    if (submitting.current) return;
+    // Сначала проверяем форму и раскрываем выбор оплаты. Заказ создаём только после выбора сервиса.
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const intent: Intent = submitter?.value === "lead" ? "lead" : submitter?.value === "yandex" ? "yandex" : submitter?.value === "split" ? "split" : "pay";
+    const intent: Intent = submitter?.value === "lead" ? "lead" : submitter?.value === "yandex" ? "yandex" : submitter?.value === "split" ? "split" : submitter?.value === "pay" ? "pay" : "choose";
     const fd = new FormData(e.currentTarget);
     const get = (k: string) => String(fd.get(k) ?? "").trim();
     const form = {
@@ -127,10 +131,18 @@ export function CartClient() {
     if (pay && !form.offer) errs.offer = "Примите условия оферты, чтобы оформить заказ.";
     setErrors(errs);
     if (Object.keys(errs).length) {
+      setChoosingPayment(false);
       document.getElementById(`f-${Object.keys(errs)[0]}`)?.focus();
       return;
     }
 
+    if (intent === "choose" && (paymentsEnabled || extra.yandex || extra.split)) {
+      setStatus({ state: "idle" });
+      setChoosingPayment(true);
+      return;
+    }
+
+    submitting.current = true;
     setStatus({ state: "sending", intent });
     try {
       const res = await fetch("/api/orders", {
@@ -151,6 +163,8 @@ export function CartClient() {
       else router.push(`/order/success?order=${encodeURIComponent(data.id)}`);
     } catch (err) {
       setStatus({ state: "error", message: err instanceof Error ? err.message : "Заказ не отправился." });
+    } finally {
+      submitting.current = false;
     }
   }
 
@@ -449,47 +463,44 @@ export function CartClient() {
                 </div>
               </div>
             )}
-            <button type="submit" name="intent" value="pay" disabled={sending} className="btn btn-strap min-h-14 w-full text-lg disabled:cursor-not-allowed disabled:opacity-50">
-              {sending && status.intent === "pay" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CreditCard className="size-5" aria-hidden />}
-              Оформить и оплатить
+            <button type="submit" name="intent" value="choose" disabled={sending} aria-expanded={choosingPayment} aria-controls="payment-choice" className="btn btn-strap min-h-14 w-full text-lg disabled:cursor-not-allowed disabled:opacity-50">
+              {sending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CreditCard className="size-5" aria-hidden />}
+              Оплатить
             </button>
             <p className="-mt-1 text-xs text-ink-soft">
-              {paymentsEnabled ? "Оплата картой или СБП на защищённой странице Ozon Pay." : "Ссылку на оплату картой или СБП пришлём после проверки заказа."}{" "}
+              {paymentsEnabled || extra.yandex || extra.split ? "На следующем шаге выберите способ оплаты." : "Ссылку на оплату картой или СБП пришлём после проверки заказа."}{" "}
               <Link href="/oferta" className="underline underline-offset-2">Оферта</Link> ·{" "}
               <Link href="/returns" className="underline underline-offset-2">Возврат и обмен</Link>
             </p>
-            <PaymentBadges compact className="text-ink-soft" />
-
-            {(extra.yandex || extra.split) && (
-              <div className="flex flex-col gap-2">
-                <p className="text-center text-sm text-ink-soft">Или оплатите через Яндекс</p>
-                <div className={extra.yandex && extra.split ? "grid gap-2 sm:grid-cols-2" : "grid gap-2"}>
-                  {extra.yandex && (
-                    <button type="submit" name="intent" value="yandex" disabled={sending} className="btn btn-ghost min-h-12 w-full text-base font-semibold disabled:opacity-60">
-                      {sending && status.intent === "yandex" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Wallet className="size-5" aria-hidden />}
-                      Яндекс Пэй
-                    </button>
-                  )}
-                  {extra.split && (
-                    <button type="submit" name="intent" value="split" disabled={sending} className="btn btn-ghost min-h-12 w-full text-base font-semibold disabled:opacity-60">
-                      {sending && status.intent === "split" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CalendarClock className="size-5" aria-hidden />}
-                      Сплит: частями
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-ink-soft">
-                  {extra.yandex && "Яндекс Пэй: оплата картой, баллы Плюса. "}
-                  {extra.split && (
-                    <>
-                      Сплит — оплата частями от Яндекса, условия и график платежей покажет Яндекс перед оплатой.{" "}
-                      <a href="https://split.yandex.ru/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-                        О сервисе Сплит
-                      </a>
-                    </>
-                  )}
-                </p>
-              </div>
+            {choosingPayment && (
+              <section id="payment-choice" aria-labelledby="payment-choice-title" className="flex flex-col gap-3 rounded-2xl border-[1.5px] border-line bg-paper p-4">
+                <h3 id="payment-choice-title" className="text-lg font-bold">Выберите способ оплаты</h3>
+                {paymentsEnabled && (
+                  <button type="submit" name="intent" value="pay" disabled={sending} className="btn btn-ghost min-h-14 w-full justify-start disabled:opacity-60">
+                    {sending && status.intent === "pay" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CreditCard className="size-5" aria-hidden />}
+                    <span className="text-left"><span className="block font-bold">Ozon Pay</span><span className="block text-xs font-normal text-ink-soft">Банковская карта или СБП</span></span>
+                  </button>
+                )}
+                {(extra.yandex || extra.split) && (
+                  <div className="flex flex-col gap-2">
+                    {extra.yandex && (
+                      <button type="submit" name="intent" value="yandex" disabled={sending} className="btn btn-ghost min-h-14 w-full justify-start disabled:opacity-60">
+                        {sending && status.intent === "yandex" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Wallet className="size-5" aria-hidden />}
+                        <span className="text-left"><span className="block font-bold">Яндекс Пэй</span><span className="block text-xs font-normal text-ink-soft">Банковская карта, баллы Плюса</span></span>
+                      </button>
+                    )}
+                    {extra.split && (
+                      <button type="submit" name="intent" value="split" disabled={sending} className="btn btn-ghost min-h-12 w-full justify-start disabled:opacity-60">
+                        {sending && status.intent === "split" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CalendarClock className="size-5" aria-hidden />}
+                        Сплит: частями
+                      </button>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-ink-soft">После выбора перейдёте на защищённую страницу оплаты. Условия Сплита покажет Яндекс.</p>
+              </section>
             )}
+            <PaymentBadges compact className="text-ink-soft" />
 
             <div className="seam text-line" />
             <div className="flex flex-col gap-2 text-center">
