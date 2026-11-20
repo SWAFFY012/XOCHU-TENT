@@ -127,15 +127,39 @@ export async function ozonToken() {
   return token!;
 }
 
+// Областной список требует много пакетов point/info: ограничиваем старт запросов всем покупателям процесса.
+let pointSlot: Promise<void> = Promise.resolve();
+let nextPointAt = 0;
+async function waitPointSlot() {
+  const slot = pointSlot.then(async () => {
+    const delay = nextPointAt - Date.now();
+    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+    nextPointAt = Date.now() + 350;
+  });
+  pointSlot = slot.catch(() => {});
+  await slot;
+}
+
 /** Запрос к Seller API с токеном продавца. */
 export async function sellerApi<T>(method: string, body: unknown): Promise<T> {
   const { value } = await ozonToken();
-  const read = (bearer: string) => fetchJson<T>(`${API}${method}`, {
+  const read = async (bearer: string): Promise<T> => {
+    const safe = ["/v3/product/list", "/v3/product/info/list", "/v1/delivery/point/list", "/v1/delivery/point/info", "/v2/delivery/checkout", "/v4/posting/fbs/list"].includes(method);
+    for (let attempt = 0; ; attempt += 1) {
+      if (method === "/v1/delivery/point/info") await waitPointSlot();
+      try {
+        return await fetchJson<T>(`${API}${method}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${bearer}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
     timeout: 20_000,
-  });
+        });
+      } catch (e) {
+        if (!safe || attempt >= 3 || !(e instanceof Error) || !e.message.includes(" 429:")) throw e;
+        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
+      }
+    }
+  };
   try {
     return await read(value);
   } catch (e) {
