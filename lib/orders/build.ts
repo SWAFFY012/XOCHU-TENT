@@ -114,6 +114,7 @@ async function buildDelivery(body: CheckoutBody, items: OrderItem[], itemsTotal:
   const point = pointId ? { id: pointId, name: clip(body.pointName, 120), address: clip(body.pointAddress, 200) } : undefined;
 
   if (city.length < 2) throw new CheckoutError("Укажите город доставки.");
+  if (mode === "pvz" && !point) throw new CheckoutError("Выберите пункт выдачи из списка. Адрес текстом не заменяет выбранный ПВЗ.");
   // до двери нужен адрес; до пункта — выбранный пункт или адрес текстом, если карта пунктов недоступна
   if ((mode === "door" || !point) && address.length < 3) {
     throw new CheckoutError(mode === "door" ? "Укажите адрес доставки." : "Выберите пункт выдачи.");
@@ -123,6 +124,7 @@ async function buildDelivery(body: CheckoutBody, items: OrderItem[], itemsTotal:
     { city, address, parcels: toParcels(items), items, value: itemsTotal, pointId: mode === "pvz" ? pointId || undefined : undefined },
     service.id,
   ).then((list) => list.filter((o) => o.mode === mode));
+  if (mode === "pvz" && (!option || option.cost === null)) throw new CheckoutError("Не удалось подтвердить доставку в выбранный ПВЗ. Попробуйте ещё раз или свяжитесь с менеджером.");
   if (option?.unavailable) throw new CheckoutError(`${service.title} не возьмёт этот заказ: ${option.note}. Выберите другую службу.`);
 
   return {

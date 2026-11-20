@@ -101,7 +101,7 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
 
   const hasPoints = needPoints && !pointsLoading && points.list.length > 0;
   // адрес текстом: до двери и до пункта, если пунктов службы не загрузили (нет ключей API)
-  const needAddress = selected && !hasPoints && !pointsLoading;
+  const needAddress = selected?.mode === "door";
   const available = list.filter((o) => !o.unavailable);
   const blocked = list.filter((o) => o.unavailable);
 
@@ -246,6 +246,10 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
         </div>
       )}
 
+      {needPoints && !hasPoints && !pointsLoading && (
+        <p className="text-sm text-danger" role="alert">Не удалось найти пункты выдачи. Уточните населённый пункт или выберите другую службу. Для оплаты необходимо выбрать ПВЗ из списка.</p>
+      )}
+
       {needAddress && (
         <Field
           id="address"
@@ -270,7 +274,7 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
       <input type="hidden" name="pointId" value={hasPoints && point ? point.id : ""} />
       <input type="hidden" name="pointName" value={hasPoints && point ? point.name : ""} />
       <input type="hidden" name="pointAddress" value={hasPoints && point ? point.address : ""} />
-      <input type="hidden" name="needPoint" value={hasPoints ? "1" : ""} />
+      <input type="hidden" name="needPoint" value={needPoints ? "1" : ""} />
 
       <p className="rounded-xl bg-ink/5 px-3 py-2.5 text-sm">
         Курьер «Хочу Тент» сдаёт заказ в службу в Санкт-Петербурге за {site.handoverDays} дня. Срок в пути — по расчёту службы.

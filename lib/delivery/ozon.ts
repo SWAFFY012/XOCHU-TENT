@@ -4,6 +4,7 @@ import path from "node:path";
 import { site } from "@/lib/site";
 import type { Order } from "@/lib/orders/types";
 import { cityCenter } from "./cdek";
+import { pointDistance as km, pointSearchRadius } from "./coverage";
 import { normalizeOffer, ozonOfferKeys, type OzonLine } from "./ozon-match";
 import { daysRange, fetchJson, memo } from "./http";
 import type { DeliveryOption, DeliveryPoint, DeliveryProvider } from "./types";
@@ -31,11 +32,6 @@ const SCOPES = ["seller-api.ozon-logistics", "seller-api.product-read-only", "se
 /** права магазина приложений, отмеченные в приложении заказчика: Ozon может требовать полный список */
 const APP_STORE_SCOPES = ["seller-app-store-api.me", "seller-app-store-api.payment"];
 const TOKEN_FILE = path.join(process.cwd(), ".data", "ozon-oauth.json");
-/** пункты Ozon ищем в этом радиусе от центра города, км */
-const RADIUS_KM = 25;
-/** В Москве и Петербурге пунктов Ozon тысячи: сто-триста ближайших к центру не покрывают город. */
-const MAX_POINTS = 3000;
-
 /** Обратный URL — в punycode, как его хранит Ozon. */
 export const ozonRedirectUri = () => `${new URL(site.url).origin}/api/delivery/ozon/oauth/callback`;
 
@@ -134,12 +130,21 @@ export async function ozonToken() {
 /** Запрос к Seller API с токеном продавца. */
 export async function sellerApi<T>(method: string, body: unknown): Promise<T> {
   const { value } = await ozonToken();
-  return fetchJson<T>(`${API}${method}`, {
+  const read = (bearer: string) => fetchJson<T>(`${API}${method}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${value}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${bearer}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
     timeout: 20_000,
   });
+  try {
+    return await read(value);
+  } catch (e) {
+    // Повторяем только чтение: создание заказа при неоднозначном ответе повторять нельзя.
+    const safe = ["/v3/product/list", "/v3/product/info/list", "/v1/delivery/point/list", "/v1/delivery/point/info", "/v2/delivery/checkout", "/v4/posting/fbs/list"].includes(method);
+    if (!safe || !(e instanceof Error) || !e.message.includes(" 401:")) throw e;
+    if (token?.value === value) token = null;
+    return read((await ozonToken()).value);
+  }
 }
 
 export type OzonProduct = { productId: number; offerId: string; sku: number; name: string; fbs: boolean; fbo: boolean };
@@ -213,14 +218,7 @@ export async function ozonSnapshot() {
 type MapPoint = { map_point_id: number; coordinate: { lat: number; long: number } };
 const mapCache = memo<MapPoint[]>(12 * 60 * 60_000);
 const cityPointsCache = memo<DeliveryPoint[]>(6 * 60 * 60_000);
-
-/** Расстояние между точками, км. */
-function km(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
-  const rad = Math.PI / 180;
-  const x = (b.lon - a.lon) * rad * Math.cos(((a.lat + b.lat) / 2) * rad);
-  const y = (b.lat - a.lat) * rad;
-  return Math.hypot(x, y) * 6371;
-}
+const pointInfoCache = memo<PointInfo[]>(6 * 60 * 60_000);
 
 type PointInfo = {
   enabled: boolean;
@@ -236,25 +234,25 @@ type PointInfo = {
 const hhmm = (t: { hours: number; minutes: number }) => `${String(t.hours).padStart(2, "0")}:${String(t.minutes).padStart(2, "0")}`;
 
 /** Пункты Ozon рядом с центром города, ближние первыми. */
-function cityPoints(city: string) {
-  return cityPointsCache(city.toLowerCase(), async () => {
+function cityPoints(city: string, nearestOnly = false) {
+  return cityPointsCache(`${city.toLowerCase()}:${nearestOnly}`, async () => {
     const center = await cityCenter(city);
     if (!center) return [];
     const all = await mapCache("all", async () => (await sellerApi<{ points?: MapPoint[] }>("/v1/delivery/point/list", {})).points ?? []);
-    const ids = all
+    const candidates = all
       .map((p) => ({ id: p.map_point_id, d: km(center, { lat: p.coordinate.lat, lon: p.coordinate.long }) }))
-      .filter((p) => p.d <= RADIUS_KM)
+      .filter((p) => p.d <= pointSearchRadius(center))
       .sort((a, b) => a.d - b.d)
-      .slice(0, MAX_POINTS)
       .map((p) => String(p.id));
+    const ids = nearestOnly ? candidates.slice(0, 1) : candidates;
     const points: DeliveryPoint[] = [];
     const chunks: string[][] = [];
     for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
     const infos: PointInfo[][] = [];
     // по пять запросов одновременно: тысячи пунктов за один проход, но без шквала к API
     for (let i = 0; i < chunks.length; i += 5) {
-      const part = await Promise.all(chunks.slice(i, i + 5).map((c) => sellerApi<{ points?: PointInfo[] }>("/v1/delivery/point/info", { map_point_ids: c })));
-      infos.push(...part.map((r) => r.points ?? []));
+      const part = await Promise.all(chunks.slice(i, i + 5).map((c) => pointInfoCache(c.join(","), async () => (await sellerApi<{ points?: PointInfo[] }>("/v1/delivery/point/info", { map_point_ids: c })).points ?? [])));
+      infos.push(...part);
     }
     for (const p of infos.flat()) {
       if (!p.enabled) continue;
@@ -346,7 +344,7 @@ export const ozon: DeliveryProvider = {
     const items = (q.items ?? []).map((i) => ({ i, p: matchProduct(i, products) }));
     if (!items.length || items.some((x) => !x.p?.sku)) return [{ ...base, cost: null }];
 
-    const pointId = q.pointId || (await cityPoints(q.city))[0]?.id;
+    const pointId = q.pointId || (await cityPoints(q.city, true))[0]?.id;
     if (!pointId) return [{ ...base, cost: null, unavailable: true, note: "нет пунктов Ozon в этом городе" }];
     const splits = await checkout(items.map(({ i, p }) => ({ sku: p!.sku, offerId: p!.offerId, qty: i.qty })), pointId);
     const bad = splits.find((s) => !s.commissions?.total || reasonOf(s));

@@ -2,6 +2,7 @@ import "server-only";
 import { deliveryPayment, shipFrom } from "@/lib/site";
 import type { Order } from "@/lib/orders/types";
 import { daysRange, fetchJson, memo } from "./http";
+import { pointDistance, pointSearchRadius } from "./coverage";
 import { toParcels } from "./parcels";
 import type { DeliveryMode, DeliveryOption, DeliveryPoint, DeliveryProvider, Parcel } from "./types";
 
@@ -37,7 +38,7 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 const packages = (parcels: Parcel[]) =>
   parcels.map((p) => ({ weight: Math.round(p.weight * 1000), length: Math.ceil(p.dims[0]), width: Math.ceil(p.dims[1]), height: Math.ceil(p.dims[2]) }));
 
-type City = { code: number; city: string; region?: string; latitude?: number; longitude?: number };
+type City = { code: number; city: string; region?: string; region_code?: number; latitude?: number; longitude?: number };
 const cityCache = memo<City | null>(24 * 60 * 60_000);
 
 /** Код города СДЭК по названию. */
@@ -65,9 +66,24 @@ type Office = {
   work_time?: string;
   weight_max?: number;
   dimensions?: { width: number; height: number; depth: number }[] | null;
-  location: { address: string; address_full?: string; latitude: number; longitude: number };
+  location: { city_code?: number; region_code?: number; address: string; address_full?: string; latitude: number; longitude: number };
 };
 const officeCache = memo<Office[]>(6 * 60 * 60_000);
+
+/** Постранично: областной список может быть больше стандартной страницы API. */
+async function listOffices(params: URLSearchParams): Promise<Office[]> {
+  const offices = new Map<string, Office>();
+  for (let page = 0; ; page += 1) {
+    const query = new URLSearchParams(params);
+    query.set("size", "1000");
+    query.set("page", String(page));
+    const batch = await api<Office[]>(`deliverypoints?${query}`);
+    const before = offices.size;
+    for (const office of batch) offices.set(office.code, office);
+    if (batch.length < 1000) return [...offices.values()];
+    if (offices.size === before) throw new Error("СДЭК повторил страницу списка ПВЗ. Уточните населённый пункт.");
+  }
+}
 
 /** Пройдёт ли груз в пункт: вес и габариты самого большого места. */
 function officeFits(o: Office, parcels: Parcel[]) {
@@ -89,7 +105,12 @@ export const cdek: DeliveryProvider = {
   ready: () => Boolean(process.env.CDEK_CLIENT_ID && process.env.CDEK_CLIENT_SECRET),
 
   async calculate(q) {
-    const city = await findCity(q.city);
+    let city = await findCity(q.city);
+    if (q.pointId) {
+      const [office] = await officeCache(`point:${q.pointId}`, () => api<Office[]>(`deliverypoints?${new URLSearchParams({ code: q.pointId!, country_code: "RU" })}`));
+      if (!office?.location.city_code) throw new Error("СДЭК не нашёл город выбранного пункта выдачи");
+      city = { code: office.location.city_code, city: q.city };
+    }
     if (!city) return (["pvz", "door"] as const).map((mode) => ({ service: "cdek", mode, cost: null, note: "город не найден в СДЭК" }));
     const body = { from_location: { address: shipFrom.city }, to_location: { code: city.code }, packages: packages(q.parcels) };
     const tariffs = await calcCache(JSON.stringify(body), async () => (await api<{ tariff_codes?: Tariff[] }>("calculator/tarifflist", body)).tariff_codes ?? []);
@@ -104,12 +125,26 @@ export const cdek: DeliveryProvider = {
   async points({ city: name, parcels }) {
     const city = await findCity(name);
     if (!city) return [];
-    const offices = await officeCache(String(city.code), () =>
-      api<Office[]>(`deliverypoints?${new URLSearchParams({ city_code: String(city.code), type: "PVZ", country_code: "RU" })}`),
-    );
+    const center = city.latitude && city.longitude ? { lat: city.latitude, lon: city.longitude } : null;
+    const broad = center && pointSearchRadius(center) === 300;
+    // Коды регионов берём из справочника самой службы, а не из названий или номеров субъектов РФ.
+    const anchors = broad ? await Promise.all(
+      (pointDistance(center, { lat: 55.75, lon: 37.62 }) < 300
+        ? ["Москва", "Красногорск"] : ["Санкт-Петербург", "Всеволожск"]).map(findCity),
+    ) : [city];
+    const regions = [...new Set(anchors.map((c) => c?.region_code).filter((c): c is number => c !== undefined))];
+    const filters = broad && regions.length === 2
+      ? regions.map((code) => ({ region_code: String(code) }))
+      : [{ city_code: String(city.code) }];
+    const lists = await Promise.all(filters.map((filter) => {
+      const params = new URLSearchParams({ ...filter, type: "PVZ", country_code: "RU" });
+      return officeCache(params.toString(), () => listOffices(params));
+    }));
+    const offices = [...new Map(lists.flat().map((o) => [o.code, o])).values()];
     return offices
       .filter((o) => officeFits(o, parcels))
-      .map((o): DeliveryPoint => ({ id: o.code, name: o.name, address: o.location.address, lat: o.location.latitude, lon: o.location.longitude, workTime: o.work_time }));
+      .sort((a, b) => center ? pointDistance(center, { lat: a.location.latitude, lon: a.location.longitude }) - pointDistance(center, { lat: b.location.latitude, lon: b.location.longitude }) : 0)
+      .map((o): DeliveryPoint => ({ id: o.code, name: o.name, address: o.location.address_full || `${name}, ${o.location.address}`, lat: o.location.latitude, lon: o.location.longitude, workTime: o.work_time }));
   },
 
   /**
