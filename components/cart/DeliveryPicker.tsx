@@ -202,7 +202,8 @@ export function DeliveryPicker({ lines, errors, onOption }: { lines: CartLine[];
             <>
               {!point && (
                 <>
-                <PointsMap points={points.list} onSelect={setPoint} />
+                {shown.length > 0 && <PointsMap points={shown} onSelect={setPoint} />}
+                <p className="text-xs text-ink-soft">На карте и в списке показаны до 60 пунктов. Введите улицу или населённый пункт — поиск работает по всем загруженным ПВЗ.</p>
                 <label className="relative">
                   <span className="sr-only">Поиск пункта по адресу</span>
                   <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-soft" aria-hidden />
