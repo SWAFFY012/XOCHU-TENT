@@ -4,8 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import { CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Send, Trash2, TriangleAlert } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CalendarClock, CreditCard, Loader2, MapPin, Minus, Navigation, Plus, Send, Trash2, TriangleAlert, Wallet } from "lucide-react";
 import { DeliveryPicker } from "@/components/cart/DeliveryPicker";
 import { ShopMap } from "@/components/ShopMap";
 import { ProductArt } from "@/components/ProductArt";
@@ -17,8 +17,8 @@ import { currentVisit } from "@/lib/visit";
 import type { DeliveryOption } from "@/lib/delivery/types";
 import { deliveryPayment, isQuoteAdvised, isQuoteOnly, paymentsEnabled, routeUrl, site } from "@/lib/site";
 
-// pay — Ozon Pay (карта и СБП), lead — заявка менеджеру
-type Intent = "pay" | "lead";
+// pay — Ozon Pay (карта и СБП), yandex — Яндекс Пэй, split — Яндекс Сплит, lead — заявка менеджеру
+type Intent = "choose" | "pay" | "yandex" | "split" | "lead";
 type Status = { state: "idle" } | { state: "sending"; intent: Intent } | { state: "error"; message: string };
 type Field = "name" | "phone" | "email" | "telegram" | "service" | "city" | "point" | "address" | "consent" | "offer";
 type Errors = Partial<Record<Field, string>>;
@@ -54,6 +54,18 @@ export function CartClient() {
   const [contact, setContact] = useState("phone");
   const [delivery, setDelivery] = useState<"pickup" | "carrier">("pickup");
   const [option, setOption] = useState<DeliveryOption | null>(null);
+  // дополнительные способы оплаты, подключённые на сервере (ключи Яндекс Пэй в .env)
+  const [extra, setExtra] = useState({ yandex: false, split: false });
+  useEffect(() => {
+    let live = true;
+    fetch("/api/payments/methods")
+      .then((r) => r.json())
+      .then((d) => live && setExtra({ yandex: Boolean(d.yandex), split: Boolean(d.split) }))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const goods = cartTotal(items);
   // доставку добавляем к оплате, только если она оплачивается вместе с заказом и цена не предварительная
   const shipping = delivery === "carrier" && deliveryPayment === "with_order" && option?.cost && !option.preliminary ? option.cost : 0;
@@ -66,18 +78,20 @@ export function CartClient() {
   const advised = items.some((i) => isQuoteAdvised(i.slug));
   const advisedCustom = items.some((i) => isQuoteAdvised(i.slug) && i.custom);
 
+  const [choosingPayment, setChoosingPayment] = useState(false);
   const submitting = useRef(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting.current) return;
+    // Сначала проверяем форму и раскрываем выбор оплаты. Заказ создаём только после выбора сервиса.
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const intent: Intent = submitter?.value === "lead" ? "lead" : "pay";
+    const intent: Intent = submitter?.value === "lead" ? "lead" : submitter?.value === "yandex" ? "yandex" : submitter?.value === "split" ? "split" : submitter?.value === "pay" ? "pay" : "choose";
     const fd = new FormData(e.currentTarget);
     const get = (k: string) => String(fd.get(k) ?? "").trim();
     const form = {
       intent: intent === "lead" ? "lead" : "pay",
-      method: "ozon",
+      method: intent === "yandex" || intent === "split" ? intent : "ozon",
       name: get("name"),
       phone,
       email: get("email"),
@@ -117,7 +131,14 @@ export function CartClient() {
     if (pay && !form.offer) errs.offer = "Примите условия оферты, чтобы оформить заказ.";
     setErrors(errs);
     if (Object.keys(errs).length) {
+      setChoosingPayment(false);
       document.getElementById(`f-${Object.keys(errs)[0]}`)?.focus();
+      return;
+    }
+
+    if (intent === "choose" && (paymentsEnabled || extra.yandex || extra.split)) {
+      setStatus({ state: "idle" });
+      setChoosingPayment(true);
       return;
     }
 
@@ -442,15 +463,43 @@ export function CartClient() {
                 </div>
               </div>
             )}
-            <button type="submit" name="intent" value="pay" disabled={sending} className="btn btn-strap min-h-14 w-full text-lg disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="submit" name="intent" value="choose" disabled={sending} aria-expanded={choosingPayment} aria-controls="payment-choice" className="btn btn-strap min-h-14 w-full text-lg disabled:cursor-not-allowed disabled:opacity-50">
               {sending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CreditCard className="size-5" aria-hidden />}
               Оплатить
             </button>
             <p className="-mt-1 text-xs text-ink-soft">
-              {paymentsEnabled ? "Оплата картой или СБП на защищённой странице Ozon Pay." : "Ссылку на оплату картой или СБП пришлём после проверки заказа."}{" "}
+              {paymentsEnabled || extra.yandex || extra.split ? "На следующем шаге выберите способ оплаты." : "Ссылку на оплату картой или СБП пришлём после проверки заказа."}{" "}
               <Link href="/oferta" className="underline underline-offset-2">Оферта</Link> ·{" "}
               <Link href="/returns" className="underline underline-offset-2">Возврат и обмен</Link>
             </p>
+            {choosingPayment && (
+              <section id="payment-choice" aria-labelledby="payment-choice-title" className="flex flex-col gap-3 rounded-2xl border-[1.5px] border-line bg-paper p-4">
+                <h3 id="payment-choice-title" className="text-lg font-bold">Выберите способ оплаты</h3>
+                {paymentsEnabled && (
+                  <button type="submit" name="intent" value="pay" disabled={sending} className="btn btn-ghost min-h-14 w-full justify-start disabled:opacity-60">
+                    {sending && status.intent === "pay" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CreditCard className="size-5" aria-hidden />}
+                    <span className="text-left"><span className="block font-bold">Ozon Pay</span><span className="block text-xs font-normal text-ink-soft">Банковская карта или СБП</span></span>
+                  </button>
+                )}
+                {(extra.yandex || extra.split) && (
+                  <div className="flex flex-col gap-2">
+                    {extra.yandex && (
+                      <button type="submit" name="intent" value="yandex" disabled={sending} className="btn btn-ghost min-h-14 w-full justify-start disabled:opacity-60">
+                        {sending && status.intent === "yandex" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Wallet className="size-5" aria-hidden />}
+                        <span className="text-left"><span className="block font-bold">Яндекс Пэй</span><span className="block text-xs font-normal text-ink-soft">Банковская карта, баллы Плюса</span></span>
+                      </button>
+                    )}
+                    {extra.split && (
+                      <button type="submit" name="intent" value="split" disabled={sending} className="btn btn-ghost min-h-12 w-full justify-start disabled:opacity-60">
+                        {sending && status.intent === "split" ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <CalendarClock className="size-5" aria-hidden />}
+                        Сплит: частями
+                      </button>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-ink-soft">После выбора перейдёте на защищённую страницу оплаты. Условия Сплита покажет Яндекс.</p>
+              </section>
+            )}
             <PaymentBadges compact className="text-ink-soft" />
 
             <div className="seam text-line" />
