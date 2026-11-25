@@ -129,9 +129,9 @@ export type DeliveryServiceId = (typeof deliveryServices)[number]["id"];
 
 /**
  * Службы, в которых отправление создаётся автоматически сразу после оплаты (lib/orders/shipment.ts).
- * Остальным отправление создаёт менеджер кнопкой в /admin. Чтобы включить Ozon Логистику, добавьте "ozon".
+ * Остальным отправление создаёт менеджер кнопкой в /admin.
  */
-export const autoShipment: readonly DeliveryServiceId[] = ["cdek"];
+export const autoShipment: readonly DeliveryServiceId[] = ["cdek", "ozon"];
 
 /**
  * Откуда отправляем: курьер «Хочу Тент» отвозит груз в пункт приёма службы в Санкт-Петербурге.
